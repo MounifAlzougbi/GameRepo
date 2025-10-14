@@ -169,18 +169,20 @@ function swap_card(t,b)
 		and deck[t].x+4>=deck[i].x 
 		and deck[i].y<s2_y
 		and b==0 then
-			local t_s=deck[t].suit
-			local t_n=deck[t].number
-			local t_x=deck[t].x
-			local t_y=deck[t].y
-			deck[t].x=deck[i].x
-			deck[t].y=deck[i].y
-			deck[t].suit=deck[i].suit
-			deck[t].number=deck[i].number
-			deck[i].suit=t_s
-			deck[i].number=t_n
-			deck[i].x=t_x
-			deck[i].y=t_y
+--			local t_n=deck[t].number
+--			local t_x=deck[t].x
+--			local t_y=deck[t].y
+--			deck[t].x=deck[i].x
+--			deck[t].y=deck[i].y
+--			deck[t].number=deck[i].number
+--			deck[i].suit=t_s
+--			deck[i].number=t_n
+--			deck[i].x=t_x
+--			deck[i].y=t_y
+			deck[t].y,deck[i].y=deck[i].y,deck[t].y
+			deck[t].x,deck[i].x=deck[i].x,deck[i].x 
+			deck[t].number,deck[i].number=deck[i].number,deck[t].number
+			deck[t].suit,deck[i].suit=deck[i].suit,deck[t].suit
 --			deck[i],deck[t]=deck[t],deck[i]
 		elseif b==52 then
 			deck[i],deck[t]=deck[t],deck[i]
@@ -201,7 +203,7 @@ function swap_card(t,b)
 --			deck[b].x=a_x
 --			deck[b].y=a_y
 --			deck[b].state=a_st
---			flag.swap_called=true
+			flag.swap_called=true
 		end
 	end
 end
