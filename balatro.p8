@@ -14,7 +14,7 @@ __lua__
 --]]
 
 deck={{suit=1,number=1,x=0,y=0,state=1},{suit=1,number=2,x=0,y=0,state=1},{suit=1,number=3,x=0,y=0,state=1},{suit=1,number=4,x=0,y=0,state=1},{suit=1,number=5,x=0,y=0,state=1},{suit=1,number=6,x=0,y=0,state=1},{suit=1,number=7,x=0,y=0,state=1},{suit=1,number=8,x=0,y=0,state=1},{suit=1,number=9,x=0,y=0,state=1},{suit=1,number=10,x=0,y=0,state=1},{suit=1,number=11,x=0,y=0,state=1},{suit=1,number=12,x=0,y=0,state=1},{suit=1,number=13,x=0,y=0,state=1},{suit=2,number=1,x=0,y=0,state=1},{suit=2,number=2,x=0,y=0,state=1},{suit=2,number=3,x=0,y=0,state=1},{suit=2,number=4,x=0,y=0,state=1},{suit=2,number=5,x=0,y=0,state=1},{suit=2,number=6,x=0,y=0,state=1},{suit=2,number=7,x=0,y=0,state=1},{suit=2,number=8,x=0,y=0,state=1},{suit=2,number=9,x=0,y=0,state=1},{suit=2,number=10,x=0,y=0,state=1},{suit=2,number=11,x=0,y=0,state=1},{suit=2,number=12,x=0,y=0,state=1},{suit=2,number=13,x=0,y=0,state=1},{suit=3,number=1,x=0,y=0,state=1},{suit=3,number=2,x=0,y=0,state=1},{suit=3,number=3,x=0,y=0,state=1},{suit=3,number=4,x=0,y=0,state=1},{suit=3,number=5,x=0,y=0,state=1},{suit=3,number=6,x=0,y=0,state=1},{suit=3,number=7,x=0,y=0,state=1},{suit=3,number=8,x=0,y=0,state=1},{suit=3,number=9,x=0,y=0,state=1},{suit=3,number=10,x=0,y=0,state=1},{suit=3,number=11,x=0,y=0,state=1},{suit=3,number=12,x=0,y=0,state=1},{suit=3,number=13,x=0,y=0,state=1},{suit=4,number=1,x=0,y=0,state=1},{suit=4,number=2,x=0,y=0,state=1},{suit=4,number=3,x=0,y=0,state=1},{suit=4,number=4,x=0,y=0,state=1},{suit=4,number=5,x=0,y=0,state=1},{suit=4,number=6,x=0,y=0,state=1},{suit=4,number=7,x=0,y=0,state=1},{suit=4,number=8,x=0,y=0,state=1},{suit=4,number=9,x=0,y=0,state=1},{suit=4,number=10,x=0,y=0,state=1},{suit=4,number=11,x=0,y=0,state=1},{suit=4,number=12,x=0,y=0,state=1},{suit=4,number=13,x=0,y=0,state=1},{suit=1,number=20,x=0,y=90,state=0}}
-deck_size=53//suit*number
+deck_size=#deck//suit*number
 
 hand_size=7
 initflag=false
@@ -63,6 +63,15 @@ game={sort=0,mult=5,chips=1,hands=100,discards=100,
 // returns how many crds in state
 // includes mouse over crds
 
+--@draw ui
+function draw_ui()
+	print("chips:",0,0,12)
+	print(game.chips,0,6,12)
+	print("hands:",0,12,5)
+	print(game.hands,0,18,5)
+	print("disc:",0,24,8)
+	print(game.discards,0,30,8)
+end
 function state_count(t_state)
 	cnt=0
 	for i=1,deck_size do
@@ -94,7 +103,7 @@ function change_state(state,amnt,errors)
 		amnt=duplicate
 	end// if recurse only fail amnt
 	for i=1,amnt do// gets changed
-		rand_int=flr(rnd(deck_size))+1
+		rand_int=flr(rnd(deck_size-1))+1
 		if deck[rand_int].state==state
 		and deck[rand_int].state!=1 then
 			duplicate+=1
@@ -105,9 +114,9 @@ function change_state(state,amnt,errors)
 	end
 end
 
-function crdprnt(i)
-	spr(deck[i].number+3,deck[i].x,deck[i].y)
-	spr(deck[i].suit-1,deck[i].x,deck[i].y+8)
+function crdprnt(s,n,x,y)
+	spr(n+3,x,y)
+	spr(s-1,x,y+8)
 	//print("test func",30,30,12)
 end
 
@@ -172,23 +181,26 @@ function swap_card(t,b)
 			deck[i].number=t_n
 			deck[i].x=t_x
 			deck[i].y=t_y
+--			deck[i],deck[t]=deck[t],deck[i]
 		elseif b==52 then
-			local a=t
-			local a_s=deck[a].suit
-			local a_n=deck[a].number
-			local a_x=deck[a].x
-			local a_y=deck[a].y
-			local a_st=deck[a].state
-			deck[a].state=deck[b].state
-			deck[a].x=deck[b].x
-			deck[a].y=deck[b].y
-			deck[a].suit=deck[b].suit
-			deck[a].number=deck[b].number
-			deck[b].suit=a_s
-			deck[b].number=a_n
-			deck[b].x=a_x
-			deck[b].y=a_y
-			deck[b].state=a_st
+			deck[i],deck[t]=deck[t],deck[i]
+
+--			local a=t
+--			local a_s=deck[a].suit
+--			local a_n=deck[a].number
+--			local a_x=deck[a].x
+--			local a_y=deck[a].y
+--			local a_st=deck[a].state
+--			deck[a].state=deck[b].state
+--			deck[a].x=deck[b].x
+--			deck[a].y=deck[b].y
+--			deck[a].suit=deck[b].suit
+--			deck[a].number=deck[b].number
+--			deck[b].suit=a_s
+--			deck[b].number=a_n
+--			deck[b].x=a_x
+--			deck[b].y=a_y
+--			deck[b].state=a_st
 --			flag.swap_called=true
 		end
 	end
@@ -301,7 +313,7 @@ function sort_deck(sort_type)
 				if deck[i].number<deck[t].number then
 --					deck[i].number,deck[t].number=deck[t].number,deck[i].number
 --					deck[i].suit,deck[t].suit=deck[t].suit,deck[i].suit
-					deck[i],deck[t]=deck[t],deck[i]
+							deck[i],deck[t]=deck[t],deck[i]
 			end end end
 	else
 		for i=1,deck_size do
@@ -309,7 +321,7 @@ function sort_deck(sort_type)
 				if deck[i].suit<deck[t].suit then
 --					deck[i].suit,deck[t].suit=deck[t].suit,deck[i].suit
 --					deck[i].number,deck[t].number=deck[t].number,deck[i].number
-					deck[i],deck[t]=deck[t],deck[i]
+							deck[i],deck[t]=deck[t],deck[i]
 			end end end end
 	set_pos(2,s2_y)
 end
@@ -536,7 +548,27 @@ b={{x=29,y=107,w=26,h=18,c=1},
 {x=84,y=109,w=31,h=14,c=1},
 {c=5,x_off=1,y_off=4,str="discard",x=85,y=110,w=29,h=12,m_over=false,pressed=false},
 {x=60,y=109,w=18,h=10,c=1},
-{c=5,x_off=1,y_off=2,str="sort",x=61,y=110,w=16,h=8,m_over=false,pressed=false}}
+{c=5,x_off=1,y_off=2,str="sort",x=61,y=110,w=16,h=8,m_over=false,pressed=false},
+{x=0,y=121,w=23,h=6,c=1},
+{x=1,y=122,w=21,h=4,c=5,x_off=3,y_off=0,str="high",m_over=false,pressed=false},
+{x=0,y=114,w=23,h=6,c=1},
+{x=1,y=115,w=21,h=4,c=5,x_off=3,y_off=0,str="pair",m_over=false,pressed=false},
+{x=0,y=107,w=23,h=6,c=1},
+{x=1,y=108,w=21,h=4,c=5,x_off=1,y_off=0,str="2pair",m_over=false,pressed=false},
+{x=0,y=100,w=23,h=6,c=1},
+{x=1,y=101,w=21,h=4,c=5,x_off=1,y_off=0,str="three",m_over=false,pressed=false},
+{x=0,y=93,w=23,h=6,c=1},
+{x=1,y=94,w=21,h=4,c=5,x_off=1,y_off=0,str="str-8",m_over=false,pressed=false},
+{x=0,y=86,w=23,h=6,c=1},
+{x=1,y=87,w=21,h=4,c=5,x_off=1,y_off=0,str="flush",m_over=false,pressed=false},
+{x=0,y=79,w=23,h=6,c=1},
+{x=1,y=80,w=21,h=4,c=5,x_off=3,y_off=0,str="full",m_over=false,pressed=false},
+{x=0,y=72,w=23,h=6,c=1},
+{x=1,y=73,w=21,h=4,c=5,x_off=3,y_off=0,str="four",m_over=false,pressed=false},
+{x=0,y=59,w=23,h=12,c=1},
+{x=1,y=60,w=21,h=10,c=5,x_off=1,y_off=0,str="str-8\nflush",m_over=false,pressed=false},
+
+}
 
 b_size=#b
 // b = buttons
@@ -600,6 +632,56 @@ function prnt_buttons()
 			print(b[i].str,b[i].x+b[i].x_off,b[i].y+b[i].y_off,7)
 		end
 	end
+	for i=8,#b do
+		if i%2==0 and b[i].m_over then
+			rectfill(b[i].w+3,b[i].y+1+b[i].h,b[i].w+53,b[i].y-11,2)
+			if i==8 then
+				crdprnt(2,13,b[i].w+14,b[i].y-11)
+			elseif i==10 then
+				crdprnt(4,1,b[i].w+6,b[i].y-11)
+				crdprnt(2,1,b[i].w+17,b[i].y-11)
+			elseif i==12 then
+				crdprnt(3,5,b[i].w+4,b[i].y-11)
+				crdprnt(2,5,b[i].w+13,b[i].y-11)
+				crdprnt(1,11,b[i].w+22,b[i].y-11)
+				crdprnt(4,11,b[i].w+31,b[i].y-11)
+			elseif i==14 then
+				crdprnt(2,9,b[i].w+13,b[i].y-11)
+				crdprnt(1,9,b[i].w+22,b[i].y-11)
+				crdprnt(4,9,b[i].w+31,b[i].y-11)
+			elseif i==16 then
+				crdprnt(3,4,b[i].w+4,b[i].y-11)
+				crdprnt(2,5,b[i].w+13,b[i].y-11)
+				crdprnt(1,6,b[i].w+22,b[i].y-11)
+				crdprnt(4,7,b[i].w+31,b[i].y-11)
+				crdprnt(3,8,b[i].w+40,b[i].y-11)
+			elseif i==18 then
+				crdprnt(3,2,b[i].w+4,b[i].y-11)
+				crdprnt(3,1,b[i].w+13,b[i].y-11)
+				crdprnt(3,13,b[i].w+22,b[i].y-11)
+				crdprnt(3,10,b[i].w+31,b[i].y-11)
+				crdprnt(3,8,b[i].w+40,b[i].y-11)
+			elseif i==20 then
+				crdprnt(3,4,b[i].w+4,b[i].y-11)
+				crdprnt(2,4,b[i].w+13,b[i].y-11)
+				crdprnt(1,4,b[i].w+22,b[i].y-11)
+				crdprnt(4,9,b[i].w+31,b[i].y-11)
+				crdprnt(3,9,b[i].w+40,b[i].y-11)
+			elseif i==22 then
+				crdprnt(3,10,b[i].w+4,b[i].y-11)
+				crdprnt(2,10,b[i].w+13,b[i].y-11)
+				crdprnt(1,10,b[i].w+22,b[i].y-11)
+				crdprnt(4,10,b[i].w+31,b[i].y-11)
+			elseif i==24 then
+				crdprnt(2,12,b[i].w+4,b[i].y-11)
+				crdprnt(2,11,b[i].w+13,b[i].y-11)
+				crdprnt(2,10,b[i].w+22,b[i].y-11)
+				crdprnt(2,9,b[i].w+31,b[i].y-11)
+				crdprnt(2,8,b[i].w+40,b[i].y-11)
+
+			end
+		end
+	end
 end
 -->8
 --[[ game loop
@@ -607,13 +689,6 @@ end
 --]]
 function _init()
 	change_state(2,hand_size,0)
---	for i=3,5 do
---		deck[i].state=2
---	end
---	deck[1].state=2
---	deck[14].state=2
---	deck[2].state=2
---	deck[15].state=2
 
 	set_pos(2,s2_y)
 	poke(0x5f2d, 1)
@@ -645,16 +720,19 @@ function _draw()
 	prnt_crds()
 	prnt_buttons()
 	if mouse.target!=0 then
-		crdprnt(mouse.target)
+		crdprnt(deck[mouse.target].suit,
+		deck[mouse.target].number,
+		deck[mouse.target].x,
+		deck[mouse.target].y)
 	end
 	spr(54,mouse.x,mouse.y)
-	print(game.chips,0,0,12)
+	draw_ui()
 --	print(mouse.x,0,0)
 --	print(mouse.y,0,8)
 --	print(mouse.target,0,0,8)
 --	print(mouse.just_pressed)
 --	print(flag.sf_func)
-	print(flag.straight)
+--	print(flag.straight)
 end
 __gfx__
 77777777777777777777777777777777777777557777775577777755777777557777775577777755777777557777775577777755777777557777775577777755
