@@ -52,7 +52,8 @@ flag={
  }
 
 --⬇️ needs to be updated asap⬇️ - this has my personal mults from balatro
-game={sort=0,mult=5,chips=1,hands=100,discards=100,
+game={ante=1,sort=0,mult=5,chips=1,
+	hands=100,discards=9,
  sf_ch=100,sf_mlt=8,four_ch=60,
  four_mlt=7,full_ch=40,full_mlt=4,
  flush_ch=35,flush_mlt=4,straight_ch=30,
@@ -70,12 +71,15 @@ function draw_ui()
 	print("hands:",0,12,5)
 	print(game.hands,0,18,5)
 	print("disc:",0,24,8)
-	print(game.discards,0,30,8)
+	print(game.discards,20,24,8)
+	print("ante:",0,30,9)
+	print(game.ante,20,30,9)
+	print(ante.req_cred,0,36,9)
 end
 function state_count(t_state)
 	cnt=0
 	for i=1,deck_size do
-		if deck[i].state==t_state 
+		if deck[i].state==t_state
 		or deck[i].state==t_state+1 then
 		 cnt+=1
 		end
@@ -307,12 +311,22 @@ end
 --[[ play hand
 --]]
 
+--@set_pos_0
+function set_pos_0(state)
+	for i=1,#deck do
+		if deck[i].state==state then
+			deck[i].x=-10
+			deck[i].y=-10
+		end
+	end
+end
+
 --@sort deck
 function sort_deck(sort_type)
 	if sort_type=='rank' then
 		for i=1,deck_size do
 			for t=i+1,deck_size-1 do
-				if deck[i].number<deck[t].number then
+				if deck[i].number>deck[t].number then
 --					deck[i].number,deck[t].number=deck[t].number,deck[i].number
 --					deck[i].suit,deck[t].suit=deck[t].suit,deck[i].suit
 							deck[i],deck[t]=deck[t],deck[i]
@@ -592,6 +606,7 @@ function button_update()
 		//func that goes through hands
 //discard button
 		change_all(4,-1)//played crds
+		set_pos_0(-1)
 		play_hand()
 		game.hands-=1
 		change_state(2,sel_crd,0)
@@ -599,8 +614,9 @@ function button_update()
 		sel_crd=0
 	elseif b[4].pressed 
 	and game.discards>0 
-	and sel_crd>1 then
+	and sel_crd>=1 then
 		change_all(4,-20)
+		set_pos_0(-20)
 		game.discards-=1
 		change_state(2,sel_crd,0)
 		set_pos(2,s2_y)
@@ -686,12 +702,28 @@ function prnt_buttons()
 	end
 end
 -->8
+--[[ ante/scenes
+
+--]]
+
+ante={num=1,scale=1.6,req_cred=140}
+
+-- @init scene
+function init_scene()
+	
+end
+
+-- @draw scene
+function draw_scene()
+	
+end
+-->8
 --[[ game loop
 
 --]]
 function _init()
+	init_scene()
 	change_state(2,hand_size,0)
-
 	set_pos(2,s2_y)
 	poke(0x5f2d, 1)
 --	poke(0x5f2d, 2)
@@ -727,14 +759,17 @@ function _draw()
 		deck[mouse.target].x,
 		deck[mouse.target].y)
 	end
-	spr(54,mouse.x,mouse.y)
 	draw_ui()
+	
 --	print(mouse.x,0,0)
 --	print(mouse.y,0,8)
 --	print(mouse.target,0,0,8)
 --	print(mouse.just_pressed)
 --	print(flag.sf_func)
 --	print(flag.straight)
+
+		spr(54,mouse.x,mouse.y)
+
 end
 __gfx__
 77777777777777777777777777777777777777557777775577777755777777557777775577777755777777557777775577777755777777557777775577777755
