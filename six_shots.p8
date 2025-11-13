@@ -1,6 +1,132 @@
 pico-8 cartridge // http://www.pico-8.com
 version 43
 __lua__
+-- data types
+
+function data_type_init()
+-- @bullet
+	bullet={
+		x,y,
+		angle,
+		mx,my,	-- mouse offset
+		speed=9.99,
+		visible=true,
+		
+		new=function(s,tbl)
+			tbl=tbl or {}
+			setmetatable(tbl,{
+				__index=s
+			})
+			return tbl
+		end,
+		
+		init=function(s)
+			mag=s.mx*s.mx+s.my*s.my
+			mag=sqrt(mag)
+			s.mx=s.mx/mag
+			s.my=s.my/mag
+			s.sx=s.x
+			s.sy=s.y
+		end,
+		
+		update=function(s)
+-- need to normalize vector
+-- for constant speed
+-- m^2=x^2+y^2 (magnitude)
+			if map_collision(s,2,false)!=true 
+			and s.x>-5
+			and s.x<130
+			and s.y>-5
+			and s.y<130 then
+				s.x+=s.mx*s.speed
+				s.y+=s.my*s.speed
+				s.lx=s.x
+				s.ly=s.y
+			else
+				s.visible=false
+			end
+			
+			if s.visible!=true 
+			and map_collision(s,2,false) then
+				sfx(2)
+			
+			
+				add(p,particle:new({
+				x=s.x,y=s.y,
+				r=rnd(2),
+				vx=rnd(1),
+				vy=rnd(1)
+				}))
+				
+				add(p,particle:new({
+				x=s.x,y=s.y,
+				r=rnd(2),
+				vx=rnd(1)*-1,
+				vy=rnd(1)
+				}))
+				
+				add(p,particle:new({
+				x=s.x,y=s.y,
+				r=rnd(2),
+				vx=rnd(2)*-1,
+				vy=rnd(1)
+				}))
+				
+			end
+		end,
+		
+		draw=function(s)
+			if s.visible then
+				spr(112,s.x-4,s.y-4)
+			end
+		end
+	}
+
+-- @bullet array
+	b={}
+	
+-- @vec
+
+end
+
+-- @pos
+	pos={	-- can be a vect w mag
+	x=0,y=0,
+	
+	new=function(s,tbl)
+		tbl=tbl or {}
+		setmetatable(tbl,{
+			__index=s,
+			__add=function(a,b)
+				return vec(a.x+b.x,a.y+b.y)
+			end,
+			__tostring=function(a)
+				return "("..a.x..","..a.y..")"
+			end,
+			__sub=function(a,b)
+				return vec(a.x-b.x,a.y-b.y)
+			end,
+			__mul=function(a,b)
+				return vec(a.x*b.x,a.y*b.y)
+			end,
+			__eq=function(a,b)
+				return a.x==b.x and a.y==b.y
+			end,
+			__div=function(a,b)
+				return a.x/b.x,a.y/b.y
+			end
+			
+			})
+		return tbl
+	end
+	
+	}
+
+function vec(x1,y1)
+	return pos:new({x=x1 or 0,
+	y=y1 or 0})
+end
+-->8
 -- mouse stuff/map stuff
 
 flg={}
@@ -151,50 +277,12 @@ function a_star_init()
 		))
 		
 		add(n,vec(
-			pos.x+1,pos.y-1
+			pos.x+1,pos.y+1
 		))
 		
 		return n
 	end
 
--- @pos
-	pos={	-- can be a vect w mag
-	x=0,y=0,
-	
-	new=function(s,tbl)
-		tbl=tbl or {}
-		setmetatable(tbl,{
-			__index=s,
-			__add=function(a,b)
-				return vec(a.x+b.x,a.y+b.y)
-			end,
-			__tostring=function(a)
-				return "("..a.x..","..a.y..")"
-			end,
-			__sub=function(a,b)
-				return vec(a.x-b.x,a.y-b.y)
-			end,
-			__mul=function(a,b)
-				return vec(a.x*b.x,a.y*b.y)
-			end,
-			__eq=function(a,b)
-				return a.x==b.x,a.y==b.y
-			end,
-			__div=function(a,b)
-				return a.x/b.x,a.y/b.y
-			end
-			
-			})
-		return tbl
-	end
-	
-	}
-	
--- @vec
-	function vec(x1,y1)
-		return pos:new({x=x1 or 0,
-		y=y1 or 0})
-	end
 
 -- @node
 	node={
@@ -283,7 +371,7 @@ function a_star_init()
 			o[1]:init()
 	
 		while complete==false do
-			if #o>150 then
+			if #o>200 then
 				print('a* out of mem',20,20,9)
 				return nil
 			end
@@ -316,7 +404,7 @@ function a_star_init()
 				local dg=1	-- g cost
 				if ntbl[i].x!=c[#c].x
 				and ntbl[i].y!=c[#c].y then
-					dg=1.404	--potential t
+					dg=1.4	--potential t
 				end
 				
 				local pg=c[#c].g+dg	--potential t
@@ -366,8 +454,13 @@ end
 -- @init
 function enemy_init()
 
+--[[ @enemy states
+		''		idle - moving - shooting
+--]]
 	enemy={
-		pos,
+		r=4, -- radius for circ coll
+		state='idle',	-- state machine?
+		pos=vec(),
 		weapon,-- pistol or hands?
 		angle,
 		dir=8,
@@ -420,18 +513,18 @@ function enemy_init()
 				elseif	dpos.y<-10
 				and in_range(dpos.x,-5,5) then
 					s.dir=8
-				elseif dpos.x>10
+				elseif dpos.x==12
 				and dpos.y==-20 then
 					s.dir=9
 				elseif	dpos.x<-10
-				and dpos.y then
-					s.dir=14
-				elseif dpos.y==20
-				and dpos.x>10 then
+				and dpos.y>10 then
+					s.dir=13
+				elseif dpos.y==12
+				and dpos.x==12 then
 					s.dir=11
-				elseif	dpos.y<-10
-				and in_range(dpos.x,-5,5) then
-					s.dir=8
+				elseif	dpos.y==-20
+				and dpos.x==-12 then
+					s.dir=15
 				end
 			end
 			
@@ -450,9 +543,9 @@ function enemy_init()
 		
 		draw=function(s)
 			spr(s.dir,s.pos.x-4,s.pos.y-4)
-			for i=1,#s.ptbl do
-				spr(60,s.ptbl[i].x,s.ptbl[i].y)
-			end
+--			for i=1,#s.ptbl do
+--				spr(60,s.ptbl[i].x,s.ptbl[i].y)
+--			end
 		end
 		
 	}
@@ -530,84 +623,9 @@ function six_init()
 	
 	}
 	
--- @bullet
-	bullet={
-		x,y,
-		angle,
-		mx,my,	-- mouse offset
-		speed=1.1,
-		visible=true,
-		
-		new=function(s,tbl)
-			tbl=tbl or {}
-			setmetatable(tbl,{
-				__index=s
-			})
-			return tbl
-		end,
-		
-		init=function(s)
-			mag=s.mx*s.mx+s.my*s.my
-			mag=sqrt(mag)
-			s.mx=s.mx/mag
-			s.my=s.my/mag
-		end,
-		
-		update=function(s)
--- need to normalize vector
--- for constant speed
--- x/x^2+y^2 (magnitude)
-			if map_collision(s,2,false)!=true 
-			and s.x>-10
-			and s.x<130
-			and s.y>-10
-			and s.y<130 then
-				s.x+=s.mx*s.speed
-				s.y+=s.my*s.speed
-			else
-				s.visible=false
-			end
-			if s.visible!=true 
-			and map_collision(s,2,false) then
-				sfx(2)
-			
-			
-				add(p,particle:new({
-				x=s.x,y=s.y,
-				r=rnd(2),
-				vx=rnd(1),
-				vy=rnd(1)
-				}))
-				
-				add(p,particle:new({
-				x=s.x,y=s.y,
-				r=rnd(2),
-				vx=rnd(1)*-1,
-				vy=rnd(1)
-				}))
-				
-				add(p,particle:new({
-				x=s.x,y=s.y,
-				r=rnd(2),
-				vx=rnd(2)*-1,
-				vy=rnd(1)
-				}))
-				
-			end
-		end,
-		
-		draw=function(s)
-			if s.visible then
-				spr(112,s.x-4,s.y-4)
-			end
-		end
-	}
-
--- @bullet array
-	b={}
-
 -- @player
 	player={
+		r=3,	--	radius for circ coll
 		health=100,
 		stamina=100,
 		x=64,y=64,
@@ -761,12 +779,14 @@ function six_update()
 	for i=1,#b do
 		b[i]:update()
 	end
+	
 	for i=1,#b do
 		if i<=#b then 
 			if b[i].visible!=true then
 				deli(b,i)
 			end
 		end
+		
 	end
 	
 	for i=1,#p do
@@ -905,6 +925,7 @@ function _init()
 	six_init()
 	a_star_init()
 	enemy_init()
+	data_type_init()
 --	sfx(0)
 end
 
@@ -937,7 +958,7 @@ function _draw()
 --	print(mouse.x,10,15,9)
 --	print(mouse.y,10,25,9)
 --	print(player.x,20,15,9)
-	print(fget(mget(player.x/8,player.y/8)),20,20,9)
+--	print(fget(mget(player.x/8,player.y/8)),20,20,9)
 
 --	p1=vec(3,3)
 --	p2=vec(10,10)
