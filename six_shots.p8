@@ -6,10 +6,10 @@ __lua__
 function data_type_init()
 -- @bullet
 	bullet={
-		x,y,
+		pos,
 		angle,
 		mx,my,	-- mouse offset
-		speed=9.99,
+		speed=10,
 		visible=true,
 		
 		new=function(s,tbl)
@@ -21,12 +21,14 @@ function data_type_init()
 		end,
 		
 		init=function(s)
-			mag=s.mx*s.mx+s.my*s.my
+			local mag=s.mpos.x*s.mpos.x+s.mpos.y*s.mpos.y
 			mag=sqrt(mag)
-			s.mx=s.mx/mag
-			s.my=s.my/mag
-			s.sx=s.x
-			s.sy=s.y
+--			s.mx=s.mx/mag
+--			s.my=s.my/mag
+			s.dir=vec(s.mpos.x/mag,s.mpos.y/mag)
+--			s.pos=s.x
+--			s.spos=s.pos
+			s.speed=vec(s.speed,s.speed)
 		end,
 		
 		update=function(s)
@@ -34,14 +36,15 @@ function data_type_init()
 -- for constant speed
 -- m^2=x^2+y^2 (magnitude)
 			if map_collision(s,2,false)!=true 
-			and s.x>-5
-			and s.x<130
-			and s.y>-5
-			and s.y<130 then
-				s.x+=s.mx*s.speed
-				s.y+=s.my*s.speed
-				s.lx=s.x
-				s.ly=s.y
+			and s.pos.x>-5
+			and s.pos.x<130
+			and s.pos.y>-5
+			and s.pos.y<130 then
+--				s.x+=s.mx*s.speed
+--				s.y+=s.my*s.speed
+--				s.lx=s.x
+--				s.ly=s.y
+				s.pos+=s.dir*s.speed
 			else
 				s.visible=false
 			end
@@ -52,21 +55,21 @@ function data_type_init()
 			
 			
 				add(p,particle:new({
-				x=s.x,y=s.y,
+				x=s.pos.x,y=s.pos.y,
 				r=rnd(2),
 				vx=rnd(1),
 				vy=rnd(1)
 				}))
 				
 				add(p,particle:new({
-				x=s.x,y=s.y,
+				x=s.pos.x,y=s.pos.y,
 				r=rnd(2),
 				vx=rnd(1)*-1,
 				vy=rnd(1)
 				}))
 				
 				add(p,particle:new({
-				x=s.x,y=s.y,
+				x=s.pos.x,y=s.pos.y,
 				r=rnd(2),
 				vx=rnd(2)*-1,
 				vy=rnd(1)
@@ -77,7 +80,7 @@ function data_type_init()
 		
 		draw=function(s)
 			if s.visible then
-				spr(112,s.x-4,s.y-4)
+				spr(112,s.pos.x-4,s.pos.y-4)
 			end
 		end
 	}
@@ -132,7 +135,7 @@ end
 flg={}
 
 mouse={
-	x=64,y=98,
+	pos=vec(64,64),
 	just_pressed=false,
 	clicked=false,--[[ need to make
 	clicked true at beggining of 
@@ -143,16 +146,16 @@ mouse={
 	lock=false,
 	pressed=false,
 	target=-1,
-	last,
+	lpos=vec(),
 	tx,ty,
-	lx,ly,		--last x-y pos
+	lpos=vec(),		--last x-y pos
 	p=64,
 	
 	is_b_col=function(s,b)
-		if 	s.x<b.x+b.w 
-		and	s.x>b.x
-		and s.y>b.y
-		and s.y<b.y+b.h then
+		if 	s.pos.x<b.x+b.w 
+		and	s.pos.x>b.x
+		and s.pos.y>b.y
+		and s.pos.y<b.y+b.h then
 			return true
 		else return false	
 		end
@@ -165,8 +168,8 @@ mouse={
 	update=function(self)
 		self.just_pressed=false
 		self.clicked=false
-		self.x=stat(32)
-		self.y=stat(33)
+		self.pos.x=stat(32)
+		self.pos.y=stat(33)
 		
 		if band(stat(34),1)==1 then
 			self.pressed=true
@@ -180,8 +183,7 @@ mouse={
 		and self.pressed==true then
 			self.pressed=false
 			self.just_pressed=true
-			self.lx=self.x
-			self.ly=self.y
+			self.lpos=self.pos
 			self.p=64
 		elseif stat(34)==2 then
 			self.dline=true
@@ -194,12 +196,12 @@ mouse={
 	draw=function(s)
 		if game.state=='menu'
 		or game.state=='a star' then
-			spr(s.p,mouse.x,mouse.y)
+			spr(s.p,mouse.pos.x,mouse.pos.y)
 		elseif game.state=='playing_six' then
-			spr(80,s.x-4,s.y-4)
+			spr(80,s.pos.x-4,s.pos.y-4)
 			if s.dline then
-				line(player.x,player.y,
-				mouse.x,mouse.y,8)
+				line(player.pos.x,player.pos.y,
+				mouse.pos.x,mouse.pos.y,8)
 				
 			end
 		end
@@ -211,9 +213,16 @@ function map_collision(obj,flg,mcoord)
 	if mcoord==false then
 		mc=8
 	end
-	if fget(mget(obj.x/mc,obj.y/mc))==flg then
-	return true
-	else return false
+	if obj.pos!=nil then
+		if fget(mget(obj.pos.x/mc,obj.pos.y/mc))==flg then
+		return true
+		else return false
+		end
+	else
+		if fget(mget(obj.x/mc,obj.y/mc))==flg then
+		return true
+		else return false
+		end
 	end
 end
 
@@ -465,7 +474,7 @@ function enemy_init()
 		angle,
 		dir=8,
 		ammo=6,
-		ptbl=vec(0,0), -- pathfinding nodes
+		ptbl=vec(), -- pathfinding nodes
 		pcool=60,	-- path cooldown
 		pstep=1,
 		
@@ -478,7 +487,7 @@ function enemy_init()
 		end,
 		
 		update_path=function(s)
-			local t=vec(flr(player.x/8),flr(player.y/8))
+			local t=vec(flr(player.pos.x/8),flr(player.pos.y/8))
 			local pos=vec(flr(s.pos.x/8),flr(s.pos.y/8))
 
 			s.ptbl=find_path(pos,t)
@@ -579,7 +588,7 @@ end
 -->8
 -- enemy spawn/game play loop
 -->8
--- player
+-- player/six shots
 
 -- @init
 function six_init()
@@ -628,8 +637,8 @@ function six_init()
 		r=3,	--	radius for circ coll
 		health=100,
 		stamina=100,
-		x=64,y=64,
-		lx,ly,
+		pos=vec(64,64),
+		lpos=vec(),
 		dspeed=0.18,
 		speed=0.18,
 		sprnt=1.5,
@@ -654,20 +663,22 @@ function six_init()
 			end
 
 -- input	
-			if btn(⬅️) and s.x>5 then
-				s.x-=s.speed	end
-			if btn(➡️) and s.x<123 then
-				s.x+=s.speed	end
-			if btn(⬆️) and s.y>5 then
-				s.y-=s.speed	end
-			if btn(⬇️) and s.y<123 then
-				s.y+=s.speed	end
+			if btn(⬅️) and s.pos.x>5 then
+				s.pos.x-=s.speed	end
+			if btn(➡️) and s.pos.x<123 then
+				s.pos.x+=s.speed	end
+			if btn(⬆️) and s.pos.y>5 then
+				s.pos.y-=s.speed	end
+			if btn(⬇️) and s.pos.y<123 then
+				s.pos.y+=s.speed	end
 				
 -- angle to spr
-			local dx=mouse.x-s.x
-			local dy=mouse.y-s.y
+--			local dx=mouse.x-s.x
+--			local dy=mouse.y-s.y
+			local dpos=mouse.pos-s.pos
+			
 			local l=0.0625--half of 1/8
-			s.angle=atan2(dx,dy)
+			s.angle=atan2(dpos.x,dpos.y)
 			if s.angle>0.25-l 
 			and s.angle<0.25+l then
 				s.dir=0
@@ -709,9 +720,9 @@ function six_init()
 				s.ammo-=1
 				
 				add(b,bullet:new({
-				x=s.x,y=s.y,
+				pos=vec(s.pos.x,s.pos.y),
 				angle=s.angle,
-				mx=dx,my=dy
+				mpos=dpos
 				}))
 			
 				b[#b]:init()
@@ -728,17 +739,15 @@ function six_init()
 			s.shoot_delay-=1
 		
 			if map_collision(s,2,false) then
-				s.x=s.lx
-				s.y=s.ly
+				s.pos=s.lpos
 			end
 		
-			s.lx=s.x
-			s.ly=s.y
+			s.lpos=s.pos
 		end,
 		
 		draw=function(s)
 --			print(s.angle,0,0,9)
-			spr(s.dir,s.x-4,s.y-4)
+			spr(s.dir,s.pos.x-4,s.pos.y-4)
 			
 -- hud stuff
 			local t=97
@@ -767,6 +776,15 @@ function six_init()
 			
 		end
 	}
+end
+
+-- @collision update
+function collision_update()
+	for bi=1,#b do
+		for ei=1,#etbl do
+			dpos=b[bi].pos-etbl[ei].pos-vec(etbl[ei].r,etbl[ei].r)
+		end
+	end
 end
 
 -- @update
@@ -799,6 +817,9 @@ function six_update()
 			end
 		end
 	end
+	
+	collision_update()
+	
 end
 
 -- @draw
