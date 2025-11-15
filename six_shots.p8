@@ -10,6 +10,7 @@ function data_type_init()
 		angle,
 		mx,my,	-- mouse offset
 		speed=10,
+		speedint=10,
 		visible=true,
 		
 		new=function(s,tbl)
@@ -90,7 +91,8 @@ function data_type_init()
 	
 -- @vec
 
-end
+	
+	end
 
 -- @pos
 	pos={	-- can be a vect w mag
@@ -125,9 +127,31 @@ end
 	
 	}
 
+-- returns vec/pos obj
 function vec(x1,y1)
+	if y1==nil then
+		y1=x1
+	end
 	return pos:new({x=x1 or 0,
 	y=y1 or 0})
+end
+
+-- returns min val in tbl
+function ret_min(tbl)
+	local least=tbl[1]
+	for i=1,#tbl do
+		if tbl[i]<least then
+			least=tbl[i]
+		end
+	end
+	return least
+end
+
+function ret_i(tbl,val)
+	for i=1,#tbl do
+		if tbl[i]==val then
+			return i end
+	end
 end
 -->8
 -- mouse stuff/map stuff
@@ -477,6 +501,7 @@ function enemy_init()
 		ptbl=vec(), -- pathfinding nodes
 		pcool=60,	-- path cooldown
 		pstep=1,
+		visible=true,
 		
 		new=function(s,tbl)
 			local tbl=tbl or {}
@@ -551,7 +576,9 @@ function enemy_init()
 		end,
 		
 		draw=function(s)
+		if s.visible then
 			spr(s.dir,s.pos.x-4,s.pos.y-4)
+		end
 --			for i=1,#s.ptbl do
 --				spr(60,s.ptbl[i].x,s.ptbl[i].y)
 --			end
@@ -563,7 +590,6 @@ function enemy_init()
 
 	add(etbl,enemy:new{
 		pos=vec(32,64)
-		
 	})
 	
 	etbl[1]:update_path()
@@ -574,6 +600,12 @@ end
 function enemy_update()
 	for i=1,#etbl do
 		etbl[i]:update()
+		if etbl[i].visible!=true then
+			deli(etbl,i)
+			add(etbl,enemy:new{
+		pos=vec(rnd(20),rnd(100))
+	})
+		end
 	end
 end
 
@@ -646,7 +678,8 @@ function six_init()
 		dir=0,
 		ammo=6,
 		ammo_cap=6,
-		shoot_delay=0,--
+		shoot_delay=0,
+		rcount=1,
 		
 		update=function(s)
 
@@ -705,10 +738,23 @@ function six_init()
 				s.dir=1
 			end
 			
-			-- reload
+
+-- reload
+			if btn(🅾️)==false then
+				s.lr=false
+			end
+
 			if btn(🅾️) 
+			and s.lr==false then
+				s.rcount+=1
+				s.lr=true
+			end
+	
+			if s.rcount%2==0
 			and s.ammo<s.ammo_cap then
-				s.ammo+=0.03
+				s.ammo+=0.1
+			elseif s.ammo>=s.ammo_cap then
+				s.rcount+=1
 			end
 		
 -- shooting
@@ -778,11 +824,90 @@ function six_init()
 	}
 end
 
+-- returns distane to enemys
+function	e_distance(bi)
+	local tbl={}
+	for ei=1,#etbl do
+		mpos=b[bi].pos-etbl[ei].pos
+			
+		local mag=mpos.x*mpos.x+mpos.y*mpos.y
+		mag=sqrt(mag)
+		mag-=etbl[ei].r
+		add(tbl,mag)
+	end
+	return tbl
+end
+
 -- @collision update
 function collision_update()
 	for bi=1,#b do
-		for ei=1,#etbl do
-			dpos=b[bi].pos-etbl[ei].pos-vec(etbl[ei].r,etbl[ei].r)
+	
+		local dist_tbl=e_distance(bi)
+		local mdist=ret_min(dist_tbl)
+		
+		local col=nil
+		local iteration=0
+		local delta_pos=0
+		local start_pos=b[bi].pos
+		
+		while col==nil do
+			if iteration>40 
+			or mdist >10
+			or delta_pos>=b[bi].speedint then
+				col=false
+			end
+			
+			if mdist<=0 then
+				local hit=ret_i(dist_tbl,mdist)
+				etbl[hit].visible=false
+				col=true
+			end
+			
+-- march ray/bullet
+			dvec=vec(mdist)
+			b[bi].pos+=b[bi].dir*dvec
+			delta_pos+=mdist
+			
+			dist_tbl=e_distance(bi)
+			mdist=ret_min(dist_tbl)
+			
+			iteration+=1
+		end
+		
+		if col==false then
+			b[bi].pos=start_pos
+		elseif col==true then
+			local hit=ret_i(dist_tbl,mdist)
+			etbl[hit].visible=false
+		end
+		
+	end
+end
+
+-- @bullet update
+function bullet_update()
+	for i=1,#b do
+		b[i]:update()
+	end
+	
+	for i=1,#b do
+		if i<=#b then 
+			if b[i].visible!=true then
+				deli(b,i)
+			end
+		end
+	end
+end
+
+function particle_update()
+	for i=1,#p do
+		p[i]:update()
+	end
+	for i=1,#p do
+		if i<=#p then
+			if p[i].visible==false then
+				deli(p,i)
+			end
 		end
 	end
 end
@@ -794,46 +919,32 @@ function six_update()
 -- enemy pathfinding
 	a_star_update()
 	
-	for i=1,#b do
-		b[i]:update()
+	particle_update()
+	
+	if #etbl>0 then
+		collision_update()
 	end
 	
-	for i=1,#b do
-		if i<=#b then 
-			if b[i].visible!=true then
-				deli(b,i)
-			end
-		end
-		
-	end
-	
-	for i=1,#p do
-		p[i]:update()
-	end
-	for i=1,#p do
-		if i<=#p then
-			if p[i].visible==false then
-				deli(p,i)
-			end
-		end
-	end
-	
-	collision_update()
+	bullet_update()
 	
 end
 
 -- @draw
 function six_draw()
+
+-- bullet draw
 	for i=1,#b do
 		b[i]:draw()
 	end
+	
 	player:draw()
 	
+-- particle draw
 	for i=1,#p do
 		p[i]:draw()
 	end
 -- emeny pathfinding
-	a_star_draw()
+--	a_star_draw()
 end
 -->8
 -- button & state
@@ -984,6 +1095,7 @@ function _draw()
 --	p1=vec(3,3)
 --	p2=vec(10,10)
 --	print(tnode.f,30,30,9)
+	print(player.rcount,20,20,9)
 end
 __gfx__
 00011000000001100000000000000000000110000000000000000000011000000008800000000880000000000000000000088000000000000000000008800000
