@@ -103,22 +103,42 @@ function data_type_init()
 		setmetatable(tbl,{
 			__index=s,
 			__add=function(a,b)
-				return vec(a.x+b.x,a.y+b.y)
+				if b.x and b.y then
+					return vec(a.x+b.x,a.y+b.y)
+				else
+					return vec(a.x+b,a.y+b)
+				end
 			end,
 			__tostring=function(a)
 				return "("..a.x..","..a.y..")"
 			end,
 			__sub=function(a,b)
-				return vec(a.x-b.x,a.y-b.y)
+			if b.x and b.y then
+					return vec(a.x-b.x,a.y-b.y)
+				else
+					return vec(a.x-b,a.y-b)
+				end
 			end,
 			__mul=function(a,b)
-				return vec(a.x*b.x,a.y*b.y)
+				if b.x and b.y then
+					return vec(a.x*b.x,a.y*b.y)
+				else
+					return vec(a.x*b,a.y*b)
+				end
 			end,
 			__eq=function(a,b)
-				return a.x==b.x and a.y==b.y
+				if b.x and b.y then
+					return a.x==b.x and a.y==b.y
+				else
+					return a.x==b and a.y==b
+				end
 			end,
 			__div=function(a,b)
-				return a.x/b.x,a.y/b.y
+				if b.x and b.y then
+					return vec(a.x/b.x,a.y/b.y)
+				else
+					return vec(a.x/b,a.y/b)
+				end
 			end
 			
 			})
@@ -502,6 +522,8 @@ function enemy_init()
 		pcool=60,	-- path cooldown
 		pstep=1,
 		visible=true,
+		speed=0.05,
+		t, -- lerp value
 		
 		new=function(s,tbl)
 			local tbl=tbl or {}
@@ -510,7 +532,8 @@ function enemy_init()
 			})
 			return tbl
 		end,
-		
+
+-- updates path to player
 		update_path=function(s)
 			local t=vec(flr(player.pos.x/8),flr(player.pos.y/8))
 			local pos=vec(flr(s.pos.x/8),flr(s.pos.y/8))
@@ -519,6 +542,7 @@ function enemy_init()
 			
 		end,
 		
+-- steps path
 		step_path=function(s)
 			if s.pstep>#s.ptbl then
 				s:update_path()
@@ -531,10 +555,18 @@ function enemy_init()
 		
 		update=function(s)
 		
--- spr direction
+-- enemy spr direction
 			if s.pstep<#s.ptbl then
-				dpos=s.ptbl[s.pstep+1]-s.pos
-							
+
+--  dpos = b-a in lerp
+				local dpos=s.ptbl[s.pstep+1]-s.pos
+				
+-- need  t incrementing
+				if s.t
+				
+-- set lerp pos
+				s.pos=s.pos-s.t(dpos)
+				
 				if dpos.x>10
 				and in_range(dpos.y,-5,5) then
 					s.dir=10
@@ -670,7 +702,7 @@ function six_init()
 		health=100,
 		stamina=100,
 		pos=vec(64,64),
-		lpos=vec(),
+		lpos=vec(0,0),
 		dspeed=0.18,
 		speed=0.18,
 		sprnt=1.5,
@@ -752,7 +784,7 @@ function six_init()
 	
 			if s.rcount%2==0
 			and s.ammo<s.ammo_cap then
-				s.ammo+=0.1
+				s.ammo+=0.075
 			elseif s.ammo>=s.ammo_cap then
 				s.rcount+=1
 			end
@@ -764,7 +796,9 @@ function six_init()
 			and btn(🅾️)!=true then
 				sfx(1)
 				s.ammo-=1
-				
+				if s.rcount%2==0 then
+					s.rcount+=1
+				end
 				add(b,bullet:new({
 				pos=vec(s.pos.x,s.pos.y),
 				angle=s.angle,
@@ -786,9 +820,9 @@ function six_init()
 		
 			if map_collision(s,2,false) then
 				s.pos=s.lpos
+			else
+				s.lpos=s.pos
 			end
-		
-			s.lpos=s.pos
 		end,
 		
 		draw=function(s)
@@ -913,9 +947,7 @@ function particle_update()
 end
 
 -- @update
-function six_update()
-	player:update()
-	
+function six_update()	
 -- enemy pathfinding
 	a_star_update()
 	
@@ -927,17 +959,21 @@ function six_update()
 	
 	bullet_update()
 	
+	enemy_update()
+	
+	player:update()
+	
 end
 
 -- @draw
 function six_draw()
 
+	enemy_draw()
+	
 -- bullet draw
 	for i=1,#b do
 		b[i]:draw()
 	end
-	
-	player:draw()
 	
 -- particle draw
 	for i=1,#p do
@@ -945,6 +981,7 @@ function six_draw()
 	end
 -- emeny pathfinding
 --	a_star_draw()
+	player:draw()
 end
 -->8
 -- button & state
@@ -1066,7 +1103,6 @@ function _update()
 		button_update()
 	elseif	game.state=='playing_six' then
 		six_update()
-		enemy_update()
 	elseif game.state=='a star' then
 		a_star_update()
 	end
@@ -1082,7 +1118,6 @@ function _draw()
 		map()
 		six_draw()
 		mouse:draw()
-		enemy_draw()
 	elseif game.state=='a star' then
 		a_star_draw()
 		mouse:draw()
@@ -1090,12 +1125,13 @@ function _draw()
 --	print(mouse.x,10,15,9)
 --	print(mouse.y,10,25,9)
 --	print(player.x,20,15,9)
---	print(fget(mget(player.x/8,player.y/8)),20,20,9)
+	print(map_collision(player,2,false))
+	print(player.lpos,20,20,8)
 
 --	p1=vec(3,3)
 --	p2=vec(10,10)
 --	print(tnode.f,30,30,9)
-	print(player.rcount,20,20,9)
+--	print(player.rcount,20,20,9)
 end
 __gfx__
 00011000000001100000000000000000000110000000000000000000011000000008800000000880000000000000000000088000000000000000000008800000
