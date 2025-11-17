@@ -123,7 +123,7 @@ function data_type_init()
 				if b.x and b.y then
 					return vec(a.x*b.x,a.y*b.y)
 				else
-					return vec(a.x*b,a.y*b)
+					return vec(a*b,a*b)
 				end
 			end,
 			__eq=function(a,b)
@@ -172,6 +172,11 @@ function ret_i(tbl,val)
 		if tbl[i]==val then
 			return i end
 	end
+end
+
+function lerp(a,b,t)
+
+	return (1-t)*a+b*t
 end
 -->8
 -- mouse stuff/map stuff
@@ -523,7 +528,7 @@ function enemy_init()
 		pstep=1,
 		visible=true,
 		speed=0.05,
-		t, -- lerp value
+		t=0, -- lerp value
 		
 		new=function(s,tbl)
 			local tbl=tbl or {}
@@ -550,6 +555,7 @@ function enemy_init()
 				local off=vec(4,4)
 				s.pos=s.ptbl[s.pstep]+off
 				s.pstep+=1
+				s.t=0
 			end
 		end,
 		
@@ -561,11 +567,9 @@ function enemy_init()
 --  dpos = b-a in lerp
 				local dpos=s.ptbl[s.pstep+1]-s.pos
 				
--- need  t incrementing
-				if s.t
-				
 -- set lerp pos
-				s.pos=s.pos-s.t(dpos)
+				s.pos=lerp(s.pos,s.ptbl[s.pstep+1],s.t)
+				s.t+=0.05
 				
 				if dpos.x>10
 				and in_range(dpos.y,-5,5) then
@@ -600,8 +604,10 @@ function enemy_init()
 				s.pstep=1
 			end
 			
-			if s.pcool%30==0 then
+			if s.pcool%30==0 
+			or p.t>=1 then
 				s:step_path()
+				
 			end
 			
 			s.pcool-=1
