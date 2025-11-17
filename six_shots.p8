@@ -175,8 +175,15 @@ function ret_i(tbl,val)
 end
 
 function lerp(a,b,t)
+	local ax=a.x
+	local ay=a.y
+	local bx=b.x
+	local by=b.y
+	
+	local x=(1-t)*a.x+b.x*t
+	local y=(1-t)*a.y+b.y*t
 
-	return (1-t)*a+b*t
+	return vec(x,y)
 end
 -->8
 -- mouse stuff/map stuff
@@ -527,8 +534,12 @@ function enemy_init()
 		pcool=60,	-- path cooldown
 		pstep=1,
 		visible=true,
-		speed=0.05,
+		speed=0.02,
 		t=0, -- lerp value
+		
+			__tostring=function(a)
+				return "("..s.ptbl..","..#s.ptbl..")"
+			end,
 		
 		new=function(s,tbl)
 			local tbl=tbl or {}
@@ -544,50 +555,59 @@ function enemy_init()
 			local pos=vec(flr(s.pos.x/8),flr(s.pos.y/8))
 
 			s.ptbl=find_path(pos,t)
+			s.pstep=1
+--			s.pos=s.ptbl[1]
+			s.t=0
 			
 		end,
 		
 -- steps path
-		step_path=function(s)
-			if s.pstep>#s.ptbl then
-				s:update_path()
-			else
-				local off=vec(4,4)
-				s.pos=s.ptbl[s.pstep]+off
-				s.pstep+=1
-				s.t=0
-			end
+		step_path=function(s)			
+--				local off=vec(4,4)
+--				s.pos=s.ptbl[s.pstep]+off
+--			s.pos=s.ptbl[s.pstep]
+			s.pstep+=1
+			s.t=0
+		
 		end,
 		
 		update=function(s)
 		
--- enemy spr direction
+-- if 
 			if s.pstep<#s.ptbl then
 
 --  dpos = b-a in lerp
-				local dpos=s.ptbl[s.pstep+1]-s.pos
+				dpos=s.ptbl[s.pstep+1]-s.ptbl[s.pstep]
 				
 -- set lerp pos
-				s.pos=lerp(s.pos,s.ptbl[s.pstep+1],s.t)
-				s.t+=0.05
+				local four=vec(4)
+				s.pos=lerp(s.ptbl[s.pstep]+four,s.ptbl[s.pstep+1]+four,s.t)
 				
-				if dpos.x>10
-				and in_range(dpos.y,-5,5) then
-					s.dir=10
-				elseif	dpos.x<-10
-				and in_range(dpos.y,-5,5) then
-					s.dir=14
-				elseif dpos.y>10
-				and in_range(dpos.x,-5,5) then
-					s.dir=12
-				elseif	dpos.y<-10
-				and in_range(dpos.x,-5,5) then
+--				s.pos+=s.tpos-s.pos
+								
+				s.t+=s.speed
+				
+				if s.t>=1 then
+					s:step_path()
+				end
+				
+				if dpos.x==0
+				and dpos.y==-8 then
 					s.dir=8
-				elseif dpos.x==12
-				and dpos.y==-20 then
+				elseif	dpos.x==8
+				and dpos.y==-8 then
 					s.dir=9
-				elseif	dpos.x<-10
-				and dpos.y>10 then
+				elseif dpos.y==0
+				and dpos.x==8 then
+					s.dir=10
+				elseif	dpos.y==8
+				and dpos.x==8 then
+					s.dir=11
+				elseif dpos.x==0
+				and dpos.y==8 then
+					s.dir=12
+				elseif	dpos.x==-8
+				and dpos.y==8 then
 					s.dir=13
 				elseif dpos.y==12
 				and dpos.x==12 then
@@ -596,21 +616,24 @@ function enemy_init()
 				and dpos.x==-12 then
 					s.dir=15
 				end
-			end
+			else
 			
-			if s.pcool<1 then
 				s:update_path()
-				s.pcool=60
-				s.pstep=1
-			end
-			
-			if s.pcool%30==0 
-			or p.t>=1 then
-				s:step_path()
 				
 			end
 			
-			s.pcool-=1
+--			if s.pcool<1 then
+--				s:update_path()
+--				s.pcool=60
+--				s.pstep=1
+--			end
+			
+--			if s.pcool%30==0 
+--			or p.t>=1 then
+--				s:step_path()
+--			end
+			
+--			s.pcool-=1
 		end,
 		
 		draw=function(s)
@@ -627,7 +650,7 @@ function enemy_init()
 	etbl={}	--tbl of all enemy
 
 	add(etbl,enemy:new{
-		pos=vec(32,64)
+		pos=vec(36,68)
 	})
 	
 	etbl[1]:update_path()
@@ -826,9 +849,8 @@ function six_init()
 		
 			if map_collision(s,2,false) then
 				s.pos=s.lpos
-			else
-				s.lpos=s.pos
 			end
+			s.lpos=s.pos
 		end,
 		
 		draw=function(s)
@@ -1130,9 +1152,17 @@ function _draw()
 	end
 --	print(mouse.x,10,15,9)
 --	print(mouse.y,10,25,9)
---	print(player.x,20,15,9)
-	print(map_collision(player,2,false))
-	print(player.lpos,20,20,8)
+
+--	p1=vec(1,1)
+--	p2=vec(2,2)
+--	
+--	p3=lerp(p2,p1,0.7)
+
+--	print(etbl[1].pos,20,15,9)
+	print(dpos,20,20,9)
+
+--	print(map_collision(player,2,false))
+--	print(player.lpos,20,20,8)
 
 --	p1=vec(3,3)
 --	p2=vec(10,10)
