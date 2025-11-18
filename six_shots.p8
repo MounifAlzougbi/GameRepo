@@ -185,10 +185,23 @@ function lerp(a,b,t)
 
 	return vec(x,y)
 end
+
+-- returns dist inbetween two obj
+function dist(a,b)
+	local dx=b.pos.x-a.pos.x
+	local dy=b.pos.y-a.pos.y
+	local csqr=dx*dx+dy*dy
+	
+	csqr=sqrt(csqr)
+	
+	return csqr
+end
 -->8
 -- mouse stuff/map stuff
 
-flg={}
+flg={
+	map_coll=false
+}
 
 mouse={
 	pos=vec(64,64),
@@ -412,7 +425,7 @@ function a_star_init()
 			local il=#rpath+1-i
 			local b=vec(8,8)
 			add(path,rpath[il].pos*b)
-			add(flg,rpath[il].pos*b)
+--			add(flg,rpath[il].pos*b)
 			
 		end
 		return path
@@ -555,6 +568,7 @@ function enemy_init()
 			local pos=vec(flr(s.pos.x/8),flr(s.pos.y/8))
 
 			s.ptbl=find_path(pos,t)
+			
 			s.pstep=1
 --			s.pos=s.ptbl[1]
 			s.t=0
@@ -572,8 +586,20 @@ function enemy_init()
 		end,
 		
 		update=function(s)
-		
--- if 
+			
+			if s.pcool<1 then
+				s.pcool=80
+				local d=#s.ptbl
+				local tbl={
+				pos=vec(s.ptbl[d].x,
+				etbl[1].ptbl[d].y)}
+				if dist(player,tbl)>30 then
+					s:update_path()
+				end
+			end
+			
+			s.pcool-=1
+			
 			if s.pstep<#s.ptbl then
 
 --  dpos = b-a in lerp
@@ -609,11 +635,11 @@ function enemy_init()
 				elseif	dpos.x==-8
 				and dpos.y==8 then
 					s.dir=13
-				elseif dpos.y==12
-				and dpos.x==12 then
-					s.dir=11
-				elseif	dpos.y==-20
-				and dpos.x==-12 then
+				elseif dpos.y==0
+				and dpos.x==-8 then
+					s.dir=14
+				elseif	dpos.y==-8
+				and dpos.x==-8 then
 					s.dir=15
 				end
 			else
@@ -621,19 +647,6 @@ function enemy_init()
 				s:update_path()
 				
 			end
-			
---			if s.pcool<1 then
---				s:update_path()
---				s.pcool=60
---				s.pstep=1
---			end
-			
---			if s.pcool%30==0 
---			or p.t>=1 then
---				s:step_path()
---			end
-			
---			s.pcool-=1
 		end,
 		
 		draw=function(s)
@@ -664,8 +677,8 @@ function enemy_update()
 		if etbl[i].visible!=true then
 			deli(etbl,i)
 			add(etbl,enemy:new{
-		pos=vec(rnd(20),rnd(100))
-	})
+			pos=vec(rnd(110)+10,rnd(108)+20)
+			})
 		end
 	end
 end
@@ -766,9 +779,6 @@ function six_init()
 			if btn(⬇️) and s.pos.y<123 then
 				s.pos.y+=s.speed	end
 				
--- angle to spr
---			local dx=mouse.x-s.x
---			local dy=mouse.y-s.y
 			local dpos=mouse.pos-s.pos
 			
 			local l=0.0625--half of 1/8
@@ -810,14 +820,14 @@ function six_init()
 				s.rcount+=1
 				s.lr=true
 			end
-	
+
 			if s.rcount%2==0
 			and s.ammo<s.ammo_cap then
 				s.ammo+=0.075
 			elseif s.ammo>=s.ammo_cap then
 				s.rcount+=1
 			end
-		
+			
 -- shooting
 			if mouse.clicked 
 			and s.ammo>=1 
@@ -849,8 +859,11 @@ function six_init()
 		
 			if map_collision(s,2,false) then
 				s.pos=s.lpos
+				map_col=true
+			else
+				s.lpos=s.pos
+				map_col=false
 			end
-			s.lpos=s.pos
 		end,
 		
 		draw=function(s)
@@ -1150,24 +1163,10 @@ function _draw()
 		a_star_draw()
 		mouse:draw()
 	end
---	print(mouse.x,10,15,9)
---	print(mouse.y,10,25,9)
-
---	p1=vec(1,1)
---	p2=vec(2,2)
---	
---	p3=lerp(p2,p1,0.7)
-
---	print(etbl[1].pos,20,15,9)
-	print(dpos,20,20,9)
-
---	print(map_collision(player,2,false))
---	print(player.lpos,20,20,8)
-
---	p1=vec(3,3)
---	p2=vec(10,10)
---	print(tnode.f,30,30,9)
---	print(player.rcount,20,20,9)
+	
+	print(flg.map_coll,20,13,9)
+--	print(player.lpos)
+	
 end
 __gfx__
 00011000000001100000000000000000000110000000000000000000011000000008800000000880000000000000000000088000000000000000000008800000
