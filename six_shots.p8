@@ -3,6 +3,11 @@ version 43
 __lua__
 -- data types
 
+game={
+	state='menu',
+	coll_tbl={}
+}
+
 function data_type_init()
 -- @bullet
 	bullet={
@@ -198,9 +203,9 @@ function dist(a,b)
 end
 -->8
 -- mouse stuff/map stuff
-
+mflg={}
 flg={
-	map_coll=false
+	map_col
 }
 
 mouse={
@@ -282,17 +287,20 @@ function map_collision(obj,flg,mcoord)
 	if mcoord==false then
 		mc=8
 	end
-	if obj.pos!=nil then
-		if fget(mget(obj.pos.x/mc,obj.pos.y/mc))==flg then
+	
+	local x=obj.pos and obj.pos.x or obj.x
+	local y=obj.pos and obj.pos.y or obj.y
+	
+	x/=mc
+	y/=mc
+	x=flr(x)
+	y=flr(y)
+	
+--	add(mflg,vec(x,y))
+	
+	if fget(mget(x,y))==flg then
 		return true
-		else return false
-		end
-	else
-		if fget(mget(obj.x/mc,obj.y/mc))==flg then
-		return true
-		else return false
-		end
-	end
+	else return false end
 end
 
 function in_tbl(tbl,obj)
@@ -322,42 +330,20 @@ end end
 -- @init
 function a_star_init()
 	
+	n_off={
+	 {1,0},{-1,0},{0,1},{0,-1},
+  {1,-1},{-1,-1},{-1,1},{1,1}
+	}
+	
 -- @get neighbors
 	function get_n(pos)
 		local n={}
 		
-		add(n,vec(
-			pos.x+1,pos.y
-		))
-		
-		add(n,vec(
-			pos.x-1,pos.y
-		))
-		
-		add(n,vec(
-			pos.x,pos.y+1
-		))
-		
-		add(n,vec(
-			pos.x,pos.y-1
-		))
--- diagonals
-		add(n,vec(
-			pos.x+1,pos.y-1
-		))
-		
-		add(n,vec(
-			pos.x-1,pos.y-1
-		))
-		
-		add(n,vec(
-			pos.x-1,pos.y+1
-		))
-		
-		add(n,vec(
-			pos.x+1,pos.y+1
-		))
-		
+		for i=1,#n_off do
+			local off=n_off[i]
+			add(n,vec(pos.x+off[1],
+													pos.y+off[2]))
+			end
 		return n
 	end
 
@@ -538,6 +524,7 @@ function enemy_init()
 	enemy={
 		r=4, -- radius for circ coll
 		state='idle',	-- state machine?
+-- idle walking shooting
 		pos=vec(),
 		weapon,-- pistol or hands?
 		angle,
@@ -549,6 +536,7 @@ function enemy_init()
 		visible=true,
 		speed=0.02,
 		t=0, -- lerp value
+		ct, -- collision index
 		
 			__tostring=function(a)
 				return "("..s.ptbl..","..#s.ptbl..")"
@@ -585,22 +573,44 @@ function enemy_init()
 		
 		end,
 		
-		update=function(s)
-			
-			if s.pcool<1 then
+		path_radius=function(s,r)
+			if s.pcool<1 
+			and #s.ptbl>1 then
 				s.pcool=80
 				local d=#s.ptbl
 				local tbl={
 				pos=vec(s.ptbl[d].x,
-				etbl[1].ptbl[d].y)}
-				if dist(player,tbl)>30 then
+				s.ptbl[d].y)}
+				if dist(player,tbl)>r then
 					s:update_path()
 				end
 			end
 			
 			s.pcool-=1
 			
-			if s.pstep<#s.ptbl then
+		end,
+		
+-- line of sight to player
+		los=function(s,obj)
+			
+		end,
+		
+		state_machine=function(s)
+		
+			if dist(player,s)>20
+			and #s.ptbl>3 then
+				s.state='walking'
+			end
+		
+		end,
+		
+		update=function(s)				
+			
+			s:state_machine()
+			s:path_radius(30)
+			
+			if s.pstep<#s.ptbl 
+			and s.state=='walking' then
 
 --  dpos = b-a in lerp
 				dpos=s.ptbl[s.pstep+1]-s.ptbl[s.pstep]
@@ -652,6 +662,8 @@ function enemy_init()
 		draw=function(s)
 		if s.visible then
 			spr(s.dir,s.pos.x-4,s.pos.y-4)
+		else
+			player.kills+=1
 		end
 --			for i=1,#s.ptbl do
 --				spr(60,s.ptbl[i].x,s.ptbl[i].y)
@@ -666,19 +678,59 @@ function enemy_init()
 		pos=vec(36,68)
 	})
 	
-	etbl[1]:update_path()
+--	etbl[1]:update_path()
 
+end
+
+function spawn_wave(amnt)
+	for i=1,amnt do
+		add(etbl,enemy:new{
+		pos=vec(rnd(110)+10,rnd(108)+20)
+		})
+	end
+end
+
+-- update collision tbl pos
+function coll_check(tbl,i,gtbl)
+		
+	if tbl[i].ckey==nil then
+		local coord={
+		pos=vec(tbl[i].pos.x,tbl[i].pos.y),
+		r=4
+		}
+		local lrnd=rnd(4)
+		local key=i*8+lrnd
+		
+		gtbl[key]=coord
+		
+		tbl[i].ckey=key
+		
+	else
+	
+		local coll_tbl=gtbl[tbl[i].ckey]
+		
+		coll_tbl.pos.x=tbl[i].pos.x
+		coll_tbl.pos.y=tbl[i].pos.y
+		
+	end
+	
 end
 
 -- @update
 function enemy_update()
-	for i=1,#etbl do
-		etbl[i]:update()
-		if etbl[i].visible!=true then
+	
+	if #etbl<1 then
+		spawn_wave(4)
+	end
+	
+	for i=#etbl,1,-1 do
+			
+		if etbl[i].visible==false then
 			deli(etbl,i)
-			add(etbl,enemy:new{
-			pos=vec(rnd(110)+10,rnd(108)+20)
-			})
+			player.kills+=1
+		else
+			etbl[i]:update()
+			coll_check(etbl,i,game.coll_tbl)
 		end
 	end
 end
@@ -754,6 +806,7 @@ function six_init()
 		ammo_cap=6,
 		shoot_delay=0,
 		rcount=1,
+		kills=0,
 		
 		update=function(s)
 
@@ -856,14 +909,44 @@ function six_init()
 			end
 			
 			s.shoot_delay-=1
-		
-			if map_collision(s,2,false) then
-				s.pos=s.lpos
-				map_col=true
-			else
-				s.lpos=s.pos
-				map_col=false
+--			flg.map_col=map_collision(player,2,false)
+			
+			is_coll=map_collision(player,2,false)
+			
+			if is_coll==true then
+--				local x1,x2=s.pos.x,s.lpos.x
+--				local y1,y2=s.pos.y,s.lpos.y
+--				
+--				if x1!=x2 then
+					s.pos.x=s.lpos.x
+--	
+--				end
+--				
+--				isx_coll=map_collision(player,2,false)
+--				
+--				if isx_coll then
+--					s.pos.x=s.lpos.x
+--				end
+--				
+--				if y1!=y2 then
+					s.pos.y=s.lpos.y
+--				end
+--				
+--				isy_coll=map_collision(player,2,false)
+--				
+--				if isy_coll then
+--					s.pos.y=s.lpos.y
+--				end
+--			else
+--				s.lpos.x=s.pos.x
+--				s.lpos.y=s.pos.y
+--			end
+
+			elseif is_coll==false then
+				s.lpos.x=s.pos.x
+				s.lpos.y=s.pos.y
 			end
+			
 		end,
 		
 		draw=function(s)
@@ -893,32 +976,81 @@ function six_init()
 				if x<s.stamina/9 then
 					spr(61,46+x*8,7)
 				end
+			
+			print(player.kills,4,118,7)
+			
 			end
 			
 		end
 	}
-end
-
--- returns distane to enemys
-function	e_distance(bi)
-	local tbl={}
-	for ei=1,#etbl do
-		mpos=b[bi].pos-etbl[ei].pos
+		
+	for v=1,18 do
+		local y=v-1
+		for h=1,18 do
+			local x=h-1
 			
+			local coord={
+				pos=vec(x,y),
+				r=4.1
+				}
+			
+			if map_collision(coord,2,true) then
+				local lrnd=rnd(5)*rnd(5)
+				game.coll_tbl[lrnd]=coord
+			end
+		end
+	end
+	
+end
+-- @end init
+
+-- returns tbl distane to enemys
+function	distance(bi,t)
+	local ttbl=t or {}
+	local tbl={}
+	for ei=1,#ttbl do
+		mpos=vec()
+		mpos.x=b[bi].pos.x-ttbl[ei].pos.x
+		mpos.y=b[bi].pos.y-ttbl[ei].pos.y
 		local mag=mpos.x*mpos.x+mpos.y*mpos.y
 		mag=sqrt(mag)
-		mag-=etbl[ei].r
+		mag-=ttbl[ei].r
 		add(tbl,mag)
 	end
 	return tbl
 end
 
+-- rets tbl of colls in range
+function colls_in_range()
+end
+
+--[[
+
+need 'unified' collision tbl,
+points and radius's of colls, in
+a certain range from the ray
+in the dir of travel
+
+enemys and tile-walls are circ
+collisions 
+
+get objs in front of ray
+func ⬆️
+
+need global collision array
+
+
+--]]
 -- @collision update
 function collision_update()
 	for bi=1,#b do
 	
-		local dist_tbl=e_distance(bi)
-		local mdist=ret_min(dist_tbl)
+		local dist_tbl=distance(bi,e)
+		if #dist_tbl>1 then
+			local mdist=ret_min(dist_tbl)
+		else
+			goto continue
+		end
 		
 		local col=nil
 		local iteration=0
@@ -927,7 +1059,7 @@ function collision_update()
 		
 		while col==nil do
 			if iteration>40 
-			or mdist >10
+			or mdist>10
 			or delta_pos>=b[bi].speedint then
 				col=false
 			end
@@ -943,7 +1075,7 @@ function collision_update()
 			b[bi].pos+=b[bi].dir*dvec
 			delta_pos+=mdist
 			
-			dist_tbl=e_distance(bi)
+			dist_tbl=distance(bi,e)
 			mdist=ret_min(dist_tbl)
 			
 			iteration+=1
@@ -955,36 +1087,28 @@ function collision_update()
 			local hit=ret_i(dist_tbl,mdist)
 			etbl[hit].visible=false
 		end
-		
 	end
+	::continue::
 end
 
 -- @bullet update
 function bullet_update()
-	for i=1,#b do
+	for i=#b,1,-1 do
 		b[i]:update()
-	end
-	
-	for i=1,#b do
-		if i<=#b then 
-			if b[i].visible!=true then
-				deli(b,i)
-			end
+		if b[i].visible!=true then
+			deli(b,i)
 		end
 	end
 end
 
 function particle_update()
-	for i=1,#p do
+	for i=#p,1,-1 do
 		p[i]:update()
-	end
-	for i=1,#p do
-		if i<=#p then
-			if p[i].visible==false then
-				deli(p,i)
-			end
+		if p[i].visible==false then
+			deli(p,i)
 		end
 	end
+
 end
 
 -- @update
@@ -1026,10 +1150,6 @@ function six_draw()
 end
 -->8
 -- button & state
-
-game={
-	state='menu'
-}
 
 function button_pressed(arg)
 	if arg=='playing_six' then
@@ -1164,9 +1284,17 @@ function _draw()
 		mouse:draw()
 	end
 	
-	print(flg.map_coll,20,13,9)
---	print(player.lpos)
+--	print(is_coll,20,13,9)
+--	print(map_collision(player,2,false),20,25,6)
+	i=0
+	for k,v in pairs(game.coll_tbl) do
+		i+=1
+	end
 	
+	print(i,30,30,2)
+	print("memory: "..stat(0), 0, 0, 7)
+ print("cpu: "..stat(1).."%", 0, 8, 7)
+
 end
 __gfx__
 00011000000001100000000000000000000110000000000000000000011000000008800000000880000000000000000000088000000000000000000008800000
@@ -1185,22 +1313,22 @@ __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006777770
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006700070
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000067777777
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000067778777
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000067788877
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000067778777
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006777777
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000666666
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000066666666
-0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006600011111111bbbbbbbb66666666
-0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000061160011111111bbbbbbbb66666666
-0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000061160011111111bbbbbbbb66666666
-0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006600011111111bbbbbbbb66666666
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000066666666
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0066600000066600000000b33b00000000000050000000000b300000000000000000000000000000000000000000000000000000000000000000000000000000
+06777600006777600000b3bb33bb00000000005000000000b3b30000000000000000000000000000000000000000000000000000000000000000000006777770
+67eee760067eee7600033b33b33b3000000006500b30000033bb0000000000000000000000000000000000000000000000000000000000000000000006700070
+67eee760067eee760003b7777773b0000000675633bb00005b300000000000000000000000000000000000000000000000000000000000000000000067777777
+67eee766667eee760000675775760000000b3756b333600005760000000000000000000000000000000000000000000000000000000000000000000067778777
+06777777777777600000675775760000003b3b5003b7760006560000000000000000000000000000000000000000000000000000000000000000000067788877
+0067766776677600000067777776000000b333000055555500650000000000000000000000000000000000000000000000000000000000000000000067778777
+00677657765776000000067ee76000000003b0000006600000005000000000000000000000000000000000000000000000000000000000000000000006777777
+00677667766776000000676a96760000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000666666
+00677777777776000006777777776000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000066666666
+0006777227776000006777777777760000000000000000000000000000000000000000000000000000000000000000000006600011111111bbbbbbbb66666666
+0006777777776000067767777776776000000000000000000000000000000000000000000000000000000000000000000061160011111111bbbbbbbb66666666
+0006777777776000556007777770065500000000000000000000000000000000000000000000000000000000000000000061160011111111bbbbbbbb66666666
+0006776666776000550007766770005500000000000000000000000000000000000000000000000000000000000000000006600011111111bbbbbbbb66666666
+00067700007760000000077007700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000066666666
+00005500005500000000055005500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 05000000000000000000000000000000000000003999993333555533000000000000000000000000000000000000000000000000000000003333999933333b33
 575000000d0000000000000000000000000000003999993335555553000000000000000000000000000000000000000000000000000000003333999933333333
 577500000dd000000000000000000000000000003399999335566553000000000000000000000000000000000000000000000000000000003333944933333333
