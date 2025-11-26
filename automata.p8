@@ -112,19 +112,20 @@ mouse={
 
 
 -->8
+-- automata funcs
+
 
 function is_dead(level)
-	local dead=0
+	local dead=true
 	for x=1,128 do
-		if pget(x,level)==0 then
-			dead+=1
+		if pget(x,level)==1 then
+			dead=false
 		end
 	end
 	
-	if dead>127 then
-		return true
-	else
-		return false end end
+	return dead
+	
+end
 
 
 function init_state(int)
@@ -135,8 +136,7 @@ function init_state(int)
 end
 
 function shift_up()
-	for y=0,127 do
-		local ytbl={}
+	for y=1,127 do
 		for x=0,127 do
 			pset(x,y-1,pget(x,y))
 		end
@@ -147,7 +147,8 @@ end
 
 function automata_init()
 	
-	cool_rules={18,22,26,30,45,54,57,60,73,90,102,105,106,110,122,126,129,150,153,184,225,1,2,8,16,32,64,128,255,1}
+	cool_rules={18,22,26,30,45,54,57,60,73,90,102,105,106,110,122,126,129,150,153,184,1,2,8,16,32,64,128,255,1}
+	playlist=false-- automata playlist
 	
 	rule_mem=8000 
 
@@ -155,10 +156,11 @@ function automata_init()
 	
 	rands=8 -- starting points
 	
-	init_state(rands)
+--	init_state(rands)
 	
 	total=0
 	y=0
+	speed=0.05
 
 	
 end
@@ -190,6 +192,15 @@ function new_layer(y)
 	
 end
 
+function reset_automata()
+	local rand=flr(rnd(#cool_rules-1))+1
+	rule=cool_rules[rand]
+	y=0
+	cls()
+	init_state(rand/2)
+	speed=0.05
+end
+
 function automata_update()
 	
 	last_t=last_t or 0
@@ -197,26 +208,21 @@ function automata_update()
 	delta_t=t-last_t
 	
 	total+=delta_t
-	
-	if total>0.05 then
+		
+	if total>speed then
 		new_layer(y)
 		y+=1
 		total=0
 	end
 	
-	if y>127 or is_dead(y) 
-		or btn(🅾️) then
-		local rand=flr(rnd(#cool_rules-1))+1
-		rule=cool_rules[rand]
-		y=0
---		shift_up()
---		if rule<255 then
---			rule+=1
---		else
---			rule=1
---		end
-		cls()
-		init_state(rands)
+	if y>126
+	and playlist
+	or btn(🅾️) then
+		reset_automata()
+	elseif y>126 
+	and playlist!=true then
+		shift_up()
+		y=126
 	end
 	
 	last_t=time()
@@ -224,21 +230,59 @@ function automata_update()
 end
 -->8
 
+function draw_init()
+	if mouse.y<32
+	and mouse.x>-1
+	and mouse.x<128
+	and mouse.pressed then
+--		flg1=true
+		pset(mouse.x,0,8)
+	else
+--		flg1=false
+	end
+end
 -->8
 -- button stuff
 
 state=1
 -- state 1=menu, 2=in automata
 
-function button_pressed(arg)
+function button_pressed(arg,i)
 	if arg=='start_automata' then
+		
+		cls()
+		
+		y=0
 		state=2
-		output_num=tonum(gb[1].field.output)
-		if output_num>0
+		output_num=tonum(gb[1].str)
+		init_amnt=tonum(gb[2].str)
+		
+		if output_num
+		and output_num>0
 		and output_num<256 then
 			rule=output_num
-			flg=output_num
---			auto
+		else
+			local rand=flr(rnd(#cool_rules-1))+1
+			rule=cool_rules[rand]
+		end
+		
+		if init_amnt
+		and init_amnt>0
+		and init_amnt<128 then
+			init_state(init_amnt)
+		else
+			init_state(8)
+		end
+		
+		
+		
+	elseif arg=='toggle_playlist' then
+		if playlist then
+			gb[i].toggle=false
+			playlist=false
+		else
+			gb[i].toggle=true
+			playlist=true
 		end
 	end
 end
@@ -251,13 +295,13 @@ function button_init()
 	-- @number field
 	num_field={
 	
-	clicked=false,
-	max_int=255,
-	min_int=0,
-	input=0,
-	output=0,
+		clicked=false,
+		max_int=255,
+		min_int=0,
+		input=0,
+		output=0,
 	
-	new=function(s,tbl)
+		new=function(s,tbl)
 			tbl=tbl or {}
 			setmetatable(tbl,{
 			__index=s
@@ -265,35 +309,34 @@ function button_init()
 			return tbl
 		end,
 	
-	init=function(s)
+		init=function(s)
 		
-	end,
+		end,
 	
-	update=function(s)
+		update=function(s)
 			
-		if s.input!=nil then
-			if tonum(s.input)==nil then
-				d=1
-			else
-				d=10
+			if s.input!=nil then
+				if tonum(s.input)==nil then
+					d=1
+				else
+					d=10
+				end
+				s.output=s.output*d+(tonum(s.input) or 0)
 			end
-			s.output=s.output*d+(tonum(s.input) or 0)
+		
+			s.input=nil
+		
+			if s.output>s.max_int
+			or s.output<s.min_int then
+				s.output=0
+			end
 		end
-		
-		s.input=nil
-		
-		if s.output>s.max_int
-		or s.output<s.min_int then
-			s.output=0
-		end
-		
-		
-	end
 	
 	}
 	
 -- @button
 	button={
+		toggle, -- toggle button?
 		cx,cy,	-- center x,y
 		str,lstr,--last str
 		cstr=6,	-- str clr
@@ -335,6 +378,13 @@ function button_init()
 		end,
 		
 		update=function(s,mouse)
+			
+			if s.toggle then
+				s.c1=s.cmo
+			else
+				s.c1=5
+			end
+			
 			local mouse_coll=mouse:is_b_col(s)
 			
 			if mouse_coll then
@@ -344,7 +394,7 @@ function button_init()
 			end
 			if mouse.just_pressed
 			and mouse_coll then
-				button_pressed(s.arg)
+				button_pressed(s.arg,s.index)
 				if s.field then
 					s.field.clicked=true
 				end	
@@ -376,16 +426,44 @@ function button_init()
 		
 	}
 	
+-- @init gui
+
+-- keep ⬇️ as 1 index! num field
 	add(gb,button:new({
-		cx=40,cy=40,
-		str='enter num 1-255',
-		field=num_field:new()
+		cx=64,cy=45,
+		str='rule? (1-255)',
+		field=num_field:new(),
+		index=#gb+1
 	}))
 	
 	add(gb,button:new({
-		cx=64,cy=105,--center x,y
+		cx=64,cy=60,
+		str='starting points? (1-127)',
+		field=num_field:new(),
+		index=#gb+1
+	}))
+	
+--	add(gb,button:new({
+--		cx=64,cy=40,
+--		str='speed? (default 50)',
+--		field=num_field:new(),
+--		index=#gb+1
+--	}))
+--	gb[#gb].field.output=50
+	
+	add(gb,button:new({
+		cx=64,cy=85,
+		str='toggle playlist',
+		arg='toggle_playlist',
+		index=#gb+1
+	}))
+	
+	add(gb,button:new({
+		cx=64,cy=100,--center x,y
 		str='begin automata',
-		arg='start_automata'}))--button use
+		arg='start_automata',
+		index=#gb+1
+	}))--button use
 	
 --	add(gb,button:new({
 --		cx=64,cy=90,
@@ -451,7 +529,6 @@ end
 -- game loop
 
 function _init()
-	cls()
 	button_init()
 	mouse:init()
 	automata_init()
@@ -463,6 +540,8 @@ function _update60()
 	end
 
 	if state==1 then
+		draw_init()
+		
 		mouse:update()
 		button_update()
 	elseif state==2 then
@@ -472,14 +551,21 @@ end
 
 function _draw()
 	if state==1 then
-		cls()
+		cls(1)
+		cls(7)
+		cls(5)
+		cls(2)
+		cls(0)
 		button_draw()
 		mouse:draw()
 	elseif state==2 
-	and y>32 then
+	and y>32 
+	and y<125 then
 		print(rule,60,0,13)
 	end 
-	print(gb[1].field.output,20,20,9)
+--	print(mouse.y)
+--	print(mouse.x)
+--	print(flg1)
 end
 
 __gfx__
