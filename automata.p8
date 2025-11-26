@@ -3,6 +3,21 @@ version 43
 __lua__
 -- mouse stuff/global data types
 
+-- num to tbl
+function num_tbl(num)
+	tbl={}
+	temp={}
+	while num>0 do
+		add(temp,num%10)
+		num=flr(num/10)
+	end
+	
+	for i=#temp,1,-1 do
+		add(tbl,temp[i])
+	end
+	
+	return tbl
+end
 
 -- returns min val in tbl
 function ret_min(tbl)
@@ -98,8 +113,6 @@ mouse={
 
 -->8
 
--->8
-
 function is_dead(level)
 	local dead=0
 	for x=1,128 do
@@ -122,32 +135,29 @@ function init_state(int)
 end
 
 function shift_up()
-		
-	for y=2,127 do
+	for y=0,127 do
 		local ytbl={}
-		for x=1,128 do
-			add(ytbl,pget(x,y))
+		for x=0,127 do
+			pset(x,y-1,pget(x,y))
 		end
-		
-		for x=1,128 do
-			pset(x,y-1,ytbl[x])
-		end
-		
 	end
-	
 end
 -->8
+-- automata loops
 
 function automata_init()
-		
+	
+	cool_rules={18,22,26,30,45,54,57,60,73,90,102,105,106,110,122,126,129,150,153,184,225,1,2,8,16,32,64,128,255,1}
+	
 	rule_mem=8000 
 
-	rule=184 -- any int 1-256
+	rule=3 -- any int 1-256
 	
-	rands=50 -- starting points
+	rands=8 -- starting points
 	
 	init_state(rands)
 	
+	total=0
 	y=0
 
 	
@@ -157,12 +167,12 @@ end
 function new_layer(y)
 	
 	for x=0,127 do
-		if x==1 then
-			left=pget(128,y)
+		if x==0 then
+			left=pget(127,y)
 			right=pget(x+1,y)
-		elseif x==128 then
+		elseif x==127 then
 			left=pget(x-1,y)
-			right=pget(1,y)
+			right=pget(0,y)
 		else
 			left=pget(x-1,y)
 			right=pget(x+1,y)
@@ -180,8 +190,6 @@ function new_layer(y)
 	
 end
 
-total=0
-
 function automata_update()
 	
 	last_t=last_t or 0
@@ -197,11 +205,11 @@ function automata_update()
 	end
 	
 	if y>127 or is_dead(y) 
-		or btn(❎) then
-		local rand=flr(rnd(255))
-		rule=rand
+		or btn(🅾️) then
+		local rand=flr(rnd(#cool_rules-1))+1
+		rule=cool_rules[rand]
 		y=0
---		shift_up
+--		shift_up()
 --		if rule<255 then
 --			rule+=1
 --		else
@@ -219,21 +227,76 @@ end
 -->8
 -- button stuff
 
-flg=false
-gstate='init'
+state=1
+-- state 1=menu, 2=in automata
 
 function button_pressed(arg)
 	if arg=='start_automata' then
-		gstate=arg
+		state=2
+		output_num=tonum(gb[1].field.output)
+		if output_num>0
+		and output_num<256 then
+			rule=output_num
+			flg=output_num
+--			auto
+		end
 	end
 end
 
 function button_init()
 	gb={}	-- global button array
-
+	
+	-- text/int field is just button
+	
+	-- @number field
+	num_field={
+	
+	clicked=false,
+	max_int=255,
+	min_int=0,
+	input=0,
+	output=0,
+	
+	new=function(s,tbl)
+			tbl=tbl or {}
+			setmetatable(tbl,{
+			__index=s
+			})
+			return tbl
+		end,
+	
+	init=function(s)
+		
+	end,
+	
+	update=function(s)
+			
+		if s.input!=nil then
+			if tonum(s.input)==nil then
+				d=1
+			else
+				d=10
+			end
+			s.output=s.output*d+(tonum(s.input) or 0)
+		end
+		
+		s.input=nil
+		
+		if s.output>s.max_int
+		or s.output<s.min_int then
+			s.output=0
+		end
+		
+		
+	end
+	
+	}
+	
+-- @button
 	button={
 		cx,cy,	-- center x,y
-		str,cstr=6,	-- str clr
+		str,lstr,--last str
+		cstr=6,	-- str clr
 		x1,y1,w,h,
 		x_off=1,y_off=4,--rrect ofset
 		r=2,c1=5,c2=1,c3=1,	--c1 main button clr,c2 outline clr, c3 def clr
@@ -241,6 +304,7 @@ function button_init()
 		px,py, -- print x,y
 		br_off=1,	--back rect
 		arg,--passed as arg when pressed
+		init_bool=true,
 		
 		new=function(s,tbl)
 			tbl=tbl or {}
@@ -251,9 +315,14 @@ function button_init()
 		end,
 		
 		init=function(s)
-			s.x1=(s.cx-#s.str*2)-1-s.r
+			local strl=#tostr(s.str)
+			if s.init_bool then
+				s.og_str=s.str
+			end
+			s.init_bool=false
+			s.x1=(s.cx-strl*2)-1-s.r
 			s.y1=s.cy-s.r-s.y_off
-			s.w1=#s.str*4+s.r*2+s.x_off
+			s.w1=strl*4+s.r*2+s.x_off
 			s.h1=s.y_off*2+1
 			
 			s.x=s.x1-s.br_off
@@ -262,11 +331,12 @@ function button_init()
 			s.h=s.h1+s.br_off*2
 			
 			s.py=s.cy-s.y_off
-			s.px=s.cx-(#s.str*2)
+			s.px=s.cx-(strl*2)
 		end,
 		
 		update=function(s,mouse)
 			local mouse_coll=mouse:is_b_col(s)
+			
 			if mouse_coll then
 				s.c2=s.cmo
 			else
@@ -275,7 +345,25 @@ function button_init()
 			if mouse.just_pressed
 			and mouse_coll then
 				button_pressed(s.arg)
+				if s.field then
+					s.field.clicked=true
+				end	
+			elseif mouse.just_pressed
+			and mouse_coll!=true 
+			and s.field then
+				s.field.clicked=false
+				if tonum(s.str)==0 then
+					s.str=s.og_str
+				end
 			end
+			
+			if s.field then
+				if s.lstr!=s.str then
+					s:init()
+				end
+			end
+			
+			s.lstr=s.str
 		end,
 		
 		draw=function(s)
@@ -289,9 +377,20 @@ function button_init()
 	}
 	
 	add(gb,button:new({
-		cx=64,cy=64,--center x,y
+		cx=40,cy=40,
+		str='enter num 1-255',
+		field=num_field:new()
+	}))
+	
+	add(gb,button:new({
+		cx=64,cy=105,--center x,y
 		str='begin automata',
 		arg='start_automata'}))--button use
+	
+--	add(gb,button:new({
+--		cx=64,cy=90,
+--		str='enter int 1-255',
+--		arg='user int'}))
 	
 	for button in all(gb) do
 		button:init()
@@ -302,6 +401,13 @@ end
 function button_update()
 	for button in all(gb) do
 		button:update(mouse)
+		if button.field then
+			if button.field.clicked then
+				button.field.input=stat(31)
+				button.str=button.field.output
+			end
+			button.field:update()
+		end
 	end
 end
 
@@ -315,23 +421,65 @@ end
 
 function _init()
 	cls()
---	button_init()
---	mouse:init()
+	button_init()
+	mouse:init()
 	automata_init()
 end
 
 function _update60()
-	automata_update()
---	button_update()
---	mouse:update()
+	if btn(❎) then
+		state=1
+	end
+
+	if state==1 then
+		mouse:update()
+		button_update()
+	elseif state==2 then
+		automata_update()
+	end
 end
 
 function _draw()
---	cls()
---	button_draw()
---	mouse:draw()
+	if state==1 then
+		cls()
+		button_draw()
+		mouse:draw()
+	end
 --	print(flg,0,0,9)
 
+end
+-- game loop
+
+function _init()
+	cls()
+	button_init()
+	mouse:init()
+	automata_init()
+end
+
+function _update60()
+	if btn(❎) then
+		state=1
+	end
+
+	if state==1 then
+		mouse:update()
+		button_update()
+	elseif state==2 then
+		automata_update()
+	end
+end
+
+function _draw()
+	if state==1 then
+		cls()
+		button_draw()
+		mouse:draw()
+	elseif state==2 
+	and y>32 then
+		print(rule,60,0,13)
+	end 
+	print(gb[1].field.output,20,20,9)
 end
 
 __gfx__
