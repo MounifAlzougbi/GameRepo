@@ -3,6 +3,35 @@ version 43
 __lua__
 -- mouse/vars
 
+function peek_packet(address)
+	local z_hash=peek4(address)
+	local score=peek2(address+4)
+	local depth=peek(address+6)
+	local flags=peek(address+7)
+	
+	packet={
+		z_hash=z_hash,
+		score=score,
+		depth=depth,
+		flags=flags
+	}
+	
+	return packet
+end
+
+function poke_packet(packet,address)
+	poke4(address,packet.z_hash)
+	poke2(address+4,packet.score)
+	poke(address+6,packet.depth)
+	poke(address+7,packet.flags)
+end
+
+-- bits 1-8 starting from right
+function ret_bit(byte,index)
+	index-=1
+	return band(byte>>index,1)
+end
+
 mouse={
 	x=64,y=98,
 	just_pressed=false,
@@ -273,6 +302,17 @@ function init_obj()
 				bb:my_col(game.turn,1)
 				bb:my_col(game.turn*-1,2)
 				bb:mask_possible(s.index)
+				if s.rank=='pawn' then
+					if s.c==1 
+					and s.y==6 then
+						s.init=true
+					elseif s.c==-1
+					and s.y==1 then
+						s.init=true
+					else
+						s.init=false
+					end
+				end
 	  elseif mouse.target==s.index
 	  and mouse.just_pressed 
 	  and bb:is_move(bx,by)	then
@@ -298,6 +338,7 @@ function init_obj()
 					s.x=bx
 					s.y=by
 					swap_turn()
+					s.init=false
 				end
 			elseif s.rank=='pawn' 
 			and s.y==0 and s.c==1
@@ -533,23 +574,6 @@ end
 -->8
 -- button stuff
 
-flags={
-	tbl={
-	['score>255']=false,
-	['y2']=0
-	},
-	
-	draw=function(s)
-		local y=0
-		local x=0
-		for f,s in pairs(s.tbl) do
-			if s==true then
-				print(f.." = "..tostr(s),x,y)
-				y-=8
-			end
-		end
-	end
-}
 
 function button_pressed(arg)
 	if arg=='start_multi' then
@@ -643,8 +667,61 @@ function button_draw()
 	end
 end
 -->8
--- zobrist stuff
+	-- zobrist - mem
 
+addys={ -- memory addresses
+	main_start=0x8000, -- free
+	main_size=4096, -- bytes
+	main_pack_size=8, -- bytes
+--[[
+extra mem space is for 
+collision/linked lists addition
+seperate to maximize var space
+]]--
+	extra_start=0x4300, -- user def
+	extra_size=4864, -- bytes
+	extra_pack_size=10, -- bytes
+}
+
+-- rets hash-mem-address
+-- currently rets 
+function hash_address(packet)
+	local base=addys.main_start
+	local p_size=addys.main_pack_size
+	local size=addys.main_size	
+	local hash=packet.z_hash
+	hash=flr(hash)
+	
+--	address=base+((hash&(size-1))<<p_size)
+	local address=base+(hash%size)*p_size
+
+	return address
+end
+
+-- reads from dyn mem
+function read(address)
+-- needs to include ll/collison
+	return peek_packet(address)
+end
+
+function insert(packet)
+	local address=hash_address(packet)
+	
+-- if address is not taken
+	if poke(address)==0 then
+		poke_packet(packet,address)
+	else
+		
+	end
+end
+
+-- delete index/address contents
+function delete(address)
+	poke4(address,0)
+	poke4(address+4,0)
+end
+
+-- inits all zobrist hash values
 function zobrist_prng()
 	
 	keys={}
@@ -660,27 +737,25 @@ function zobrist_prng()
 				local rndint=rnd(0x7fff.ffff)
 				poke4(8000,rndint)
 				keys[i][c][p]=peek4(8000)
+--				print(rndint)
 			end
 		end
 	end
-	
 end
-zvount=0
+
+--returns zobrist hash of board
 function ret_zhash()
-	zvount+=1
 	local hash=0
 	
 	for i=1,#p do
 		if 	p[i].x<128
 		and p[i].y<128 then
-			local px=flr(p[i].x/16)
-			local py=flr(p[i].y/16)
-			
-			local pos=py*8+px
-			
-			pos+=1
+		
+			local pos=p[i].y*8+p[i].x+1
+				-- always ret 0?  ⬆️
 		
 			local col=p[i].c
+			-- correct, trust
 			if col==1 then
 				col=2
 			else
@@ -703,13 +778,17 @@ function ret_zhash()
 				rank=6
 			end
 			
-			
-			print(pos,20,20,8)
-			
-			local key=keys[pos][col][rank]
-			
-			hash=bxor(hash,key)
+--			print(pos,20,20,8)
+			if keys[pos]
+			and keys[pos][col]
+			and keys[pos][col][rank] then
+				local key=keys[pos][col][rank]
+				hash=bxor(hash,key)
+			else
+
+			end
 		
+
 		end
 	end
 	
@@ -727,6 +806,15 @@ function _init()
 	poke(0x5f2d, 1)
 	bb:change_all(2)
 	zobrist_prng()
+	
+	packet={
+		z_hash=ret_zhash(),
+		score=120,
+		depth=6,
+		flags=1
+	}
+	
+	
 end
 
 function _update()
@@ -753,9 +841,11 @@ function _draw()
 		bb:draw_possible()
 		spr_2x2(p[t].n,(mouse.x/16)-0.5,(mouse.y/16)-0.5)
 	end
-	flags:draw()
-	print(ret_zhash(),9)
-	print(zvount,20,20,9)
+--	flags:draw()
+	packet.z_hash=ret_zhash()
+	htest=hash_address(packet)
+	print(tostr(htest,true),8)
+	
 	mouse:draw()
 end
 
