@@ -1,29 +1,53 @@
 pico-8 cartridge // http://www.pico-8.com
 version 43
 __lua__
--- mouse/vars
+-- mouse / vars
+packet_test={}
 
+-- t/f if i in range
+function range(mn,mx,i)
+	if i>=mn
+	and i<=mx then
+		return true
+	else return false end
+end
+
+-- rets peeked packet
 function peek_packet(address)
-	local z_hash=peek4(address)
-	local score=peek2(address+4)
-	local depth=peek(address+6)
-	local flags=peek(address+7)
 	
-	packet={
-		z_hash=z_hash,
-		score=score,
-		depth=depth,
-		flags=flags
+	local b1=peek(address)
+	local b2=peek(address+1)
+	local b3=peek(address+2)
+	local b4=peek(address+3)
+	add(packet_test,{b1,b2,b3,b4})
+--	local hash=bor(bor(b1,b2<<8),bor(b3,b4<<8)<<16)
+	local hash = bxor(b1,bxor((b2<<8),bxor((b3<<16),(b4<<24))))
+
+	
+	local packet={
+		z_hash=hash,
+		score=peek2(address+4),
+		depth=peek(address+6),
+		flags=peek(address+7)
 	}
 	
 	return packet
 end
 
+-- pokes packet
 function poke_packet(packet,address)
-	poke4(address,packet.z_hash)
-	poke2(address+4,packet.score)
-	poke(address+6,packet.depth)
-	poke(address+7,packet.flags)
+	if range(0x8000,0xffff,address)
+	or range(0x4300,0x5600,address) then
+		local hash=packet.z_hash
+		poke(address,hash)
+		poke(address+1,hash>>8)
+		poke(address+2,hash>>16)
+		poke(address+3,hash>>24)
+		
+		poke2(address+4,packet.score)
+		poke(address+6,packet.depth)
+		poke(address+7,packet.flags)
+	end
 end
 
 -- set to 1
@@ -43,7 +67,6 @@ end
 function ret_bit(byte,index)
 	return band(byte>>index-1,1)
 end
-
 
 mouse={
 	x=64,y=98,
@@ -254,9 +277,7 @@ game={
 
 -- @init objects
 function init_obj()
-	
-	
-	
+
 -- allow for global.var
 	class=setmetatable({
 		new=function(self,tbl)
@@ -682,7 +703,7 @@ function button_draw()
 	end
 end
 -->8
--- zobrist - mem
+-- zobrist / mem
 
 addys={ -- memory addresses
 	main_start=0x8000+96, -- free
@@ -703,15 +724,16 @@ seperate to maximize var space
 function hash_address(packet,col)
 	col=col or false
 	
-	local base=addys.main_start
-	local p_size=addys.main_pack_size
-	local size=addys.main_size	
-	local hash=packet.z_hash
-	
 	if col then
-		base=addys.extra_start
-		p_size=addys.extra_pack_size
-		size=addys.extra_size
+		local base=addys.extra_start
+		local p_size=addys.extra_pack_size
+		local size=addys.extra_size	
+		local hash=packet.z_hash
+	else
+		base=addys.main_start
+		p_size=addys.main_pack_size
+		size=addys.main_size	
+		hash=packet.z_hash
 	end
 	
 --	address=base+((hash&(size-1))<<p_size)
@@ -721,24 +743,48 @@ function hash_address(packet,col)
 end
 
 -- reads from dyn mem
-function read(key)
--- needs to include ll/collison
-	return peek_packet(address)
-end
-
-function collision_address(packet)
-	address=hash_address(packet,true)
+function read(address)
+	local packet=peek_packet(address)
+	if address>=0x4300
+	and address<0x5600 then
+		packet.pointer=peek2(address+8)
+	end
+	
+	return packet
 end
 
 function insert(packet)
 	local address=hash_address(packet)
 	
 -- if address is not taken
-	if poke4(address)==0 then
+	if peek(address)==0 then
 		poke_packet(packet,address)
+		return true
 	else
-		set_bit(poke(address+7),1)
-		collision_address(packet,true)
+-- if hash matches updated
+		local address_hash=poke4(address)
+		if address_hash==packet.z_hash then
+			delete(address)
+			poke_packet(packet,address)
+			return true
+		else
+-- if collision:
+			address_flags=poke(address+7)
+			set_bit(address_flags,1)
+			address=hash_address(packet,true)
+			stored=false
+			while stored==false do
+				if peek(address)==0 then
+					poke_packet(packet,address)
+					stored=true
+					return true
+				else
+-- pointer trail ⬇️
+					poke2(address+8,address+10)
+					address+=10
+				end
+			end
+		end
 	end
 end
 
@@ -768,6 +814,7 @@ function zobrist_prng()
 			end
 		end
 	end
+	poke(8000,0)
 end
 
 --returns zobrist hash of board
@@ -834,13 +881,16 @@ function _init()
 	bb:change_all(2)
 	zobrist_prng()
 	
-	packet={
-		z_hash=ret_zhash(),
-		score=120,
+	testp={
+		z_hash=-1000000,
+		score=-120,
 		depth=6,
 		flags=1
 	}
 	
+	insert(testp)
+	address=hash_address(testp)
+--	read_pack=read(address)
 	
 end
 
@@ -851,6 +901,39 @@ function _update()
 	elseif state.board then
 		update_board()
 	end
+end
+
+function test_hash_storage()
+    local test_addr = 0x4300
+    local test_hash = 0x12345678
+    
+    print("=== test ===")
+    print("test hash:", tostr(test_hash, true))
+    
+    -- break down
+    local low = test_hash & 0xffff
+    local high = shr(test_hash, 16)
+    
+    print("high:", tostr(high, true))
+    print("low:", tostr(low, true))
+    
+    -- store
+    poke2(test_addr, high)
+    poke2(test_addr+2, low)
+    
+    -- read back  
+    local read_high = peek2(test_addr)
+    local read_low = peek2(test_addr+2)
+    
+    print("read high:", tostr(read_high, true))
+    print("read low:", tostr(read_low, true))
+    
+    -- reconstruct
+    local reconstructed = (read_high << 16) | read_low
+    
+    print("original:", tostr(test_hash, true))
+    print("rebuilt:", tostr(reconstructed, true))
+    print("match?", reconstructed == test_hash)
 end
 
 function _draw()
@@ -869,9 +952,15 @@ function _draw()
 		spr_2x2(p[t].n,(mouse.x/16)-0.5,(mouse.y/16)-0.5)
 	end
 --	flags:draw()
-	
-	print(tostr(htest,true),8)
-	
+--	packet.z_hash=ret_zhash()
+--	htest=hash_address(packet)
+--	print(tostr(htest,true),8)
+	testp.z_hash=ret_zhash()
+	read_pack=read(address)
+
+	print(testp.z_hash,9)
+	print(#packet_test,9)
+		
 	mouse:draw()
 end
 
