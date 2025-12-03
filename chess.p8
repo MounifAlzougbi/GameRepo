@@ -1,29 +1,67 @@
 pico-8 cartridge // http://www.pico-8.com
 version 43
 __lua__
--- mouse/vars
+-- mouse / vars
+packet_test={}
 
-function peek_packet(address)
-	local z_hash=peek4(address)
-	local score=peek2(address+4)
-	local depth=peek(address+6)
-	local flags=peek(address+7)
+debug={
+	inits=true,
+	tbl={},
+	stats=true,
 	
-	packet={
-		z_hash=z_hash,
-		score=score,
-		depth=depth,
-		flags=flags
-	}
+	init=function(s)
+		if s.inits then
+		testp={
+			z_hash=10,
+			score=-120,
+			depth=6,
+			flags=1
+		}
 	
-	return packet
+		
+		s.inits=false
+		end
+	end,
+	
+	draw=function(s)
+		if s.stats then
+			rectfill(0,0,30+(2.3*#tostr(stat(0),true)),10,9)
+			print('cpu% : '..stat(1),0,0,8)
+			print('mem : '..stat(0),0,6,8)
+		end
+	end
+}
+
+-- t/f if i in range
+function range(mn,mx,i)
+	if i>=mn
+	and i<=mx then
+		return true
+	else return false end
 end
 
+-- rets peeked packet
+function peek_packet(address)
+--	if address==nil then
+
+	return {
+		z_hash=peek4(address),
+		score=peek2(address+4),
+		depth=peek(address+6),
+		flags=peek(address+7)
+	}
+end
+
+-- pokes packet
 function poke_packet(packet,address)
-	poke4(address,packet.z_hash)
-	poke2(address+4,packet.score)
-	poke(address+6,packet.depth)
-	poke(address+7,packet.flags)
+	if range(0x8000,0xffff,address)
+	or range(0x4300,0x5600,address) then
+		poke4(address,packet.z_hash)
+		
+		poke2(address+4,packet.score)
+		poke(address+6,packet.depth)
+		poke(address+7,packet.flags)
+	end
 end
 
 -- set to 1
@@ -43,7 +81,6 @@ end
 function ret_bit(byte,index)
 	return band(byte>>index-1,1)
 end
-
 
 mouse={
 	x=64,y=98,
@@ -254,9 +291,7 @@ game={
 
 -- @init objects
 function init_obj()
-	
-	
-	
+
 -- allow for global.var
 	class=setmetatable({
 		new=function(self,tbl)
@@ -682,7 +717,7 @@ function button_draw()
 	end
 end
 -->8
--- zobrist - mem
+-- zobrist / mem
 
 addys={ -- memory addresses
 	main_start=0x8000+96, -- free
@@ -700,52 +735,132 @@ seperate to maximize var space
 
 -- rets hash-mem-address
 -- currently rets 
-function hash_address(packet,col)
+function hash_address(key,col)
 	col=col or false
 	
-	local base=addys.main_start
-	local p_size=addys.main_pack_size
-	local size=addys.main_size	
-	local hash=packet.z_hash
-	
 	if col then
-		base=addys.extra_start
-		p_size=addys.extra_pack_size
-		size=addys.extra_size
+		local base=addys.extra_start
+		local p_size=addys.extra_pack_size
+		local size=addys.extra_size	
+	else
+		base=addys.main_start
+		p_size=addys.main_pack_size
+		size=addys.main_size	
 	end
 	
 --	address=base+((hash&(size-1))<<p_size)
-	local address=base+(hash%size)*p_size
+	local address=base+(key%size)*p_size
 
 	return address
 end
 
--- reads from dyn mem
+-- @read from dyn mem
 function read(key)
--- needs to include ll/collison
-	return peek_packet(address)
+	local	addr=hash_address(key)
+	local packet=peek_packet(addr)
+	
+	if packet.z_hash!=key then
+		addr=hash_address(key,true)
+		
+		while poke4(addr)!=key 
+		and addr<0x5600 
+		and addr!=0 do
+			
+			addr=poke2(addr+8)
+			
+		end
+		packet=peek_packet(addr)
+	end
+	
+	return packet
 end
 
-function collision_address(packet)
-	address=hash_address(packet,true)
+function find_empty_addr()
+	for i=0x4300,0x5600,10 do
+		if peek(i)==0 then
+			return i
+		end
+	end
+	return nil
 end
 
+-- @insert collision
+function insert_collision(packet)
+	
+	local current=hash_address(packet.z_hash,true)
+	local last=current
+	
+	while peek2(current+8)!=0 do
+		last=current
+		current=peek2(current+8)
+	end
+-- empty addr
+	addr=find_empty_addr()
+	
+	if addr==nil then
+		return false end
+	
+-- poke pointer
+	poke2(current+8,addr)
+-- poke packet
+--	delete(packet.z_hash)
+	poke_packet(packet,addr)
+-- poke next pointer
+	poke2(current+8,0)
+	
+	return true
+	
+end
+
+-- @insert packet
 function insert(packet)
-	local address=hash_address(packet)
+	local address=hash_address(packet.z_hash)
 	
 -- if address is not taken
-	if poke4(address)==0 then
+	if peek(address)==0 then
 		poke_packet(packet,address)
+		return true
 	else
-		set_bit(poke(address+7),1)
-		collision_address(packet,true)
+-- if hash matches updated
+		local address_hash=poke4(address)
+		if address_hash==packet.z_hash then
+			delete(packet.z_hash)
+			poke_packet(packet,address)
+			return true
+		else
+			local check=insert_collision(packet)
+			if check then return check
+			else return false end
+		end
 	end
 end
 
--- delete index/address contents
-function delete(address)
-	poke4(address,0)
-	poke4(address+4,0)
+-- @delete z_key instance
+function delete(key)
+	local addr=hash_address(key)
+	
+	if poke4(addr)==key then
+		poke4(addr,0)
+		poke4(addr+4,0)
+		return true
+	end
+	
+-- collision
+	addr=hash_address(key,true)
+	
+	while poke4(addr)!=key
+	and addr<0x5600 
+	and addr!=0 do
+		addr=poke2(addr+8)
+	end
+	
+	if addr==0 then
+		return false end
+	
+	poke4(addr,0)
+	poke4(addr+4,0)
+	return true
+	
 end
 
 -- inits all zobrist hash values
@@ -768,6 +883,7 @@ function zobrist_prng()
 			end
 		end
 	end
+	poke(8000,0)
 end
 
 --returns zobrist hash of board
@@ -827,35 +943,38 @@ end
 -->8
 -- game loop
 
+
+-- @init
 function _init()
 	button_init()
 	init_obj()
-	poke(0x5f2d, 1)
+	mouse:init()
 	bb:change_all(2)
 	zobrist_prng()
 	
-	packet={
-		z_hash=ret_zhash(),
-		score=120,
+	testp={
+		z_hash=1000,
+		score=-120,
 		depth=6,
 		flags=1
 	}
 	
-	
 end
 
+-- @update
 function _update()
 	mouse:update()
 	if state.menu then
 		button_update()
 	elseif state.board then
 		update_board()
+		debug:init()
 	end
 end
 
+-- @draw
 function _draw()
 	cls()
-
 	if state.menu then
 		button_draw()
 	elseif state.board then
@@ -868,9 +987,8 @@ function _draw()
 		bb:draw_possible()
 		spr_2x2(p[t].n,(mouse.x/16)-0.5,(mouse.y/16)-0.5)
 	end
---	flags:draw()
 	
-	print(tostr(htest,true),8)
+	debug:draw()
 	
 	mouse:draw()
 end
