@@ -5,9 +5,9 @@ __lua__
 #include mouse&sys.lua
 #include chess_logic.lua
 #include transpositionTable.lua
+#include chessBotTools.lua
 
 -- game loop
-
 
 debug={
 	inits=true,
@@ -60,21 +60,21 @@ debug={
 		})
 		
 
-		t1=insert_collision(s.tbl[1])
-		t2=insert_collision(s.tbl[2])
-		t3=insert_collision(s.tbl[3])
+		-- t1=insert_collision(s.tbl[1])
+		-- t2=insert_collision(s.tbl[2])
+		-- t3=insert_collision(s.tbl[3])
 
-		delete(s.tbl[2].z_hash)
+		-- delete(s.tbl[2].z_hash)
 
-		-- t1=insert(s.tbl[1])
-		-- t2=insert(s.tbl[2])
-		-- t3=insert(s.tbl[3])
+		-- -- t1=insert(s.tbl[1])
+		-- -- t2=insert(s.tbl[2])
+		-- -- t3=insert(s.tbl[3])
 
 
 
-		tr1=read(s.tbl[1].z_hash)
-		tr2=read(s.tbl[2].z_hash)
-		tr3=read(s.tbl[3].z_hash)
+		-- tr1=read(s.tbl[1].z_hash)
+		-- tr2=read(s.tbl[2].z_hash)
+		-- tr3=read(s.tbl[3].z_hash)
 		
 		s.inits=false
 		end
@@ -86,9 +86,9 @@ debug={
 			print('cpu% : '..stat(1),0,0,8)
 			print('mem : '..stat(0),0,6,8)
 		end
-		print(tostr(t1,true),0,15,2)
-		print(tostr(t2,true),0,21,2)
-		print(tostr(t3,true),0,27,2)
+		-- print(tostr(t1,true),0,15,2)
+		-- print(tostr(t2,true),0,21,2)
+		-- print(tostr(t3,true),0,27,2)
 
 		-- print(tostr(addr,true),0,33,2)
 	end
