@@ -119,7 +119,7 @@ function button_pressed(arg)
 	if arg=='start_multi' then
 		state.menu=false
 		state.board=true
-		init_board(-1)--init black PEAC
+		init_board(-1)--init black 
 		init_board(1)--and white!
 	end
 end

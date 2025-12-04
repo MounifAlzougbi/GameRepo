@@ -17,49 +17,50 @@ debug={
 	init=function(s)
 		if s.inits then
 
-		add(s.tbl,{
-			z_hash=486+2,
-			score=-120,
-			depth=6,
-			flags=1
-		})
--- points to 0x4300 
-		add(s.tbl,{
-			z_hash=486*2+2,
-			score=120,
-			depth=7,
-			flags=2
-		})
--- points to 0x430a
-		add(s.tbl,{
-			z_hash=486*3+2,
-			score=20,
-			depth=2,
-			flags=3
-		})
+-- 		add(s.tbl,{
+-- 			z_hash=486+2,
+-- 			score=-120,
+-- 			depth=6,
+-- 			flags=1
+-- 		})
+-- -- points to 0x4300 
+-- 		add(s.tbl,{
+-- 			z_hash=486*2+2,
+-- 			score=120,
+-- 			depth=7,
+-- 			flags=2
+-- 		})
+-- -- points to 0x430a
+-- 		add(s.tbl,{
+-- 			z_hash=486*3+2,
+-- 			score=20,
+-- 			depth=2,
+-- 			flags=3
+-- 		})
 		
-		add(s.tbl,{
-			z_hash=486*4+2,
-			score=20,
-			depth=2,
-			flags=3
-		})
+-- 		add(s.tbl,{
+-- 			z_hash=486*4+2,
+-- 			score=20,
+-- 			depth=2,
+-- 			flags=3
+-- 		})
 
-		add(s.tbl,{
-			z_hash=4084+2,
-			score=20,
-			depth=2,
-			flags=3
-		})
+-- 		add(s.tbl,{
+-- 			z_hash=4084+2,
+-- 			score=20,
+-- 			depth=2,
+-- 			flags=3
+-- 		})
 		
-		add(s.tbl,{
-			z_hash=4084*2+2,
-			score=20,
-			depth=2,
-			flags=3
-		})
+-- 		add(s.tbl,{
+-- 			z_hash=4084*2+2,
+-- 			score=20,
+-- 			depth=2,
+-- 			flags=3
+-- 		})
 		
-
+		poss=botPossibleMoves(-1)
+		
 		-- t1=insert_collision(s.tbl[1])
 		-- t2=insert_collision(s.tbl[2])
 		-- t3=insert_collision(s.tbl[3])

@@ -1,9 +1,5 @@
 
 
-possibleMoves={
-
-}
-
 function posToInt(x,y)
 	if x>8 or y>8 or y<0
 	or x<0 then return false end
@@ -22,7 +18,7 @@ function peiceStep(x,y,dx,dy,i,tbl)
 	if val==nil and sx>-1 and sx<8
 	and sy>-1 and sy<9 and i<8 then
 		add(tbl,{posToInt(x,y),posToInt(sx,sy)})
-		p_step(sx,sy,dx,dy,i+1,tbl)
+		peiceStep(sx,sy,dx,dy,i+1,tbl)
 	end
 end
 
@@ -32,40 +28,72 @@ function botPossibleMoves(color)
 
 	for i=1,#p do
 
+		local x=p[i].x
+		local y=p[i].y
+
 		if p[i].rank=='pawn' 
 		and p[i].c==color then
---	pawn 2 start jump
-			if p[i].init then
-				local y2=bb:what_i(p[i].x,p[i].y+(2*p[i].c))
+--	pawn 2 start jump (clr logic)
+			if p[i].c==-1
+			and y==1
+			or p[i].c==1
+			and y==6 then
+				local y2=bb:what_i(x,y+(2*p[i].c))
 				if y2==nil then
-					add(moves,{posToInt(p[i].x,p[i].y),posToInt(p[i].x,p[i].y+(2*p[i].c))})
+					add(moves,{posToInt(x,y),posToInt(x,y-(2*p[i].c))})
 				end
 			end
 --	pawn one forward
-			local y1=bb:what_i(p[i].x,p[i].y+p[i].c)
+			y1=bb:what_i(x,y-p[i].c)
 
 			if y1==nil then
-				add(moves,{posToInt(p[i].x,p[i].y),posToInt(p[i].x,p[i].y+p[i].c)})
+				add(moves,{posToInt(x,y),posToInt(x,y-p[i].c)})
 			end
 
 		elseif p[i].rank=='knite'
 		and p[i].c==color then
-
+			peiceStep(x,y,-1,-2,7,moves)
+			peiceStep(x,y,1,-2,7,moves)
+			peiceStep(x,y,-1,2,7,moves)
+			peiceStep(x,y,1,2,7,moves)
+			peiceStep(x,y,2,-1,7,moves)
+			peiceStep(x,y,2,1,7,moves)
+			peiceStep(x,y,-2,-1,7,moves)
+			peiceStep(x,y,-2,1,7,moves)
 		elseif p[i].rank=='rook'
 		and p[i].c==color then
-			peiceStep(p[i].x,p[i].y,1,0,0,moves)
-			peiceStep(p[i].x,p[i].y,-1,0,0,moves)
-			peiceStep(p[i].x,p[i].y,0,1,0,moves)
-			peiceStep(p[i].x,p[i].y,0,-1,0,moves)
+			peiceStep(x,y,1,0,1,moves)
+			peiceStep(x,y,-1,0,1,moves)
+			peiceStep(x,y,0,1,1,moves)
+			peiceStep(x,y,0,-1,1,moves)
 		elseif p[i].rank=='bish'
 		and p[i].c==color then
-
+			peiceStep(x,y,1,1,1,moves)
+			peiceStep(x,y,-1,1,1,moves)
+			peiceStep(x,y,1,-1,1,moves)
+			peiceStep(x,y,-1,-1,1,moves)
 		elseif p[i].rank=='queen'
 		and p[i].c==color then
-
+			peiceStep(x,y,1,1,1,moves)
+			peiceStep(x,y,-1,1,1,moves)
+			peiceStep(x,y,1,-1,1,moves)
+			peiceStep(x,y,-1,-1,1,moves)
+			peiceStep(x,y,1,0,1,moves)
+			peiceStep(x,y,-1,0,1,moves)
+			peiceStep(x,y,0,1,1,moves)
+			peiceStep(x,y,0,-1,1,moves)
 		elseif p[i].rank=='king'
 		and p[i].c==color then
-
+			--rook like
+			peiceStep(x,y,0,-1,7,moves)
+			peiceStep(x,y,0,1,7,moves)
+			peiceStep(x,y,-1,0,7,moves)
+			peiceStep(x,y,1,0,7,moves)
+			--bish like
+			peiceStep(x,y,-1,-1,7,moves)
+			peiceStep(x,y,1,-1,7,moves) 
+			peiceStep(x,y,-1,1,7,moves)
+			peiceStep(x,y,1,1,7,moves)
 		end
 	end
 	return moves

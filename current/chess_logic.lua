@@ -12,9 +12,9 @@ function p_step(x,y,dx,dy,i)
 	local sy=y+dy
 	local val=peekbb(sx,sy)
 	if val!=1 and sx>-1 and sx<8
-	and sy>-1 and sy<9 and i<14 then
+	and sy>-1 and sy<9 and i<8 then
 		pokebb(sx,sy,3)
-		if val==2 then i=14
+		if val==2 then i=8
 		else
 			p_step(sx,sy,dx,dy,i+1)
 		end
