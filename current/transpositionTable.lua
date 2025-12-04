@@ -176,12 +176,14 @@ function delete(key)
 		return true
 	end
 
+	local last=addr
 	local count=0
 	while peek4(addr)!=key
 	and addr<0x5600 
 	and addr!=0
 	and count<200 do
 		count+=1
+		last=addr
 		addr=peek2(addr+8)
 	end
 	
