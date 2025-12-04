@@ -12,9 +12,9 @@ function p_step(x,y,dx,dy,i)
 	local sy=y+dy
 	local val=peekbb(sx,sy)
 	if val!=1 and sx>-1 and sx<8
-	and sy>-1 and sy<9 and i<8 then
+	and sy>-1 and sy<9 and i<14 then
 		pokebb(sx,sy,3)
-		if val==2 then i=8
+		if val==2 then i=14
 		else
 			p_step(sx,sy,dx,dy,i+1)
 		end
@@ -299,7 +299,8 @@ function init_obj()
 			for i=1,#p do
 				if p[i].x==x 
 				and p[i].y==y then
-				return	i end end
+				return i end end
+			return nil
 		end,
 		
 -- returns state of x,y
@@ -411,6 +412,7 @@ function init_board(clr)
 	add_p('rook',7,ryl_y,clr,p_draw[c].rook)
 
 end
+
 p_pos=false
 
 -- @update board
