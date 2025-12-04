@@ -1,7 +1,86 @@
 pico-8 cartridge // http://www.pico-8.com
 version 43
 __lua__
--- mouse stuff
+-- mouse / vars
+packet_test={}
+
+debug={
+	inits=true,
+	tbl={},
+	stats=true,
+	
+	init=function(s)
+		if s.inits then
+		testp={
+			z_hash=10,
+			score=-120,
+			depth=6,
+			flags=1
+		}
+	
+		
+		s.inits=false
+		end
+	end,
+	
+	draw=function(s)
+		if s.stats then
+			rectfill(0,0,30+(2.3*#tostr(stat(0),true)),10,9)
+			print('cpu% : '..stat(1),0,0,8)
+			print('mem : '..stat(0),0,6,8)
+		end
+	end
+}
+
+-- t/f if i in range
+function range(mn,mx,i)
+	if i>=mn
+	and i<=mx then
+		return true
+	else return false end
+end
+
+-- rets peeked packet
+function peek_packet(address)
+--	if address==nil then
+
+	return {
+		z_hash=peek4(address),
+		score=peek2(address+4),
+		depth=peek(address+6),
+		flags=peek(address+7)
+	}
+end
+
+-- pokes packet
+function poke_packet(packet,address)
+	if range(0x8000,0xffff,address)
+	or range(0x4300,0x5600,address) then
+		poke4(address,packet.z_hash)
+		
+		poke2(address+4,packet.score)
+		poke(address+6,packet.depth)
+		poke(address+7,packet.flags)
+	end
+end
+
+-- set to 1
+function set_bit(byte,index)
+	return bor(byte,1<<index-1)
+end
+
+-- set to 0
+function clr_bit(byte,index)
+	ones=1
+	ones=ones<<index-1
+	ones=bxor(ones,0xffff.ffff)
+	return band(byte,ones)
+end
+
+-- bits 1-8 starting from right
+function ret_bit(byte,index)
+	return band(byte>>index-1,1)
+end
 
 mouse={
 	x=64,y=98,
@@ -273,6 +352,17 @@ function init_obj()
 				bb:my_col(game.turn,1)
 				bb:my_col(game.turn*-1,2)
 				bb:mask_possible(s.index)
+				if s.rank=='pawn' then
+					if s.c==1 
+					and s.y==6 then
+						s.init=true
+					elseif s.c==-1
+					and s.y==1 then
+						s.init=true
+					else
+						s.init=false
+					end
+				end
 	  elseif mouse.target==s.index
 	  and mouse.just_pressed 
 	  and bb:is_move(bx,by)	then
@@ -298,6 +388,7 @@ function init_obj()
 					s.x=bx
 					s.y=by
 					swap_turn()
+					s.init=false
 				end
 			elseif s.rank=='pawn' 
 			and s.y==0 and s.c==1
@@ -437,11 +528,12 @@ end
 function init_board(clr)
 	local ryl_y=0
 	local pwn_y=1
-	local c=1 -- 1=black print
+	local c=1 
+	
 	if clr==1 then -- 1 = white
-		ryl_y=7 -- -1 = black
+		ryl_y=7
 		pwn_y=6
-		c=2 -- 2=white print
+		c=2 -- 2=black
 	end
 	
 	for x=1,8 do-- pawns
@@ -532,23 +624,6 @@ end
 -->8
 -- button stuff
 
-flags={
-	tbl={
-	['score>255']=false,
-	['y2']=0
-	},
-	
-	draw=function(s)
-		local y=0
-		local x=0
-		for f,s in pairs(s.tbl) do
-			if s==true then
-				print(f.." = "..tostr(s),x,y)
-				y-=8
-			end
-		end
-	end
-}
 
 function button_pressed(arg)
 	if arg=='start_multi' then
@@ -642,27 +717,264 @@ function button_draw()
 	end
 end
 -->8
+-- zobrist / mem
+
+addys={ -- memory addresses
+	main_start=0x8000+96, -- free
+	main_size=4000, -- bytes
+	main_pack_size=8, -- bytes
+--[[
+extra mem space is for 
+collision/linked lists addition
+seperate to maximize var space
+]]--
+	extra_start=0x4300, -- user def
+	extra_size=4864, -- bytes
+	extra_pack_size=10, -- bytes
+}
+
+-- rets hash-mem-address
+-- currently rets 
+function hash_address(key,col)
+	col=col or false
+	
+	if col then
+		local base=addys.extra_start
+		local p_size=addys.extra_pack_size
+		local size=addys.extra_size	
+	else
+		base=addys.main_start
+		p_size=addys.main_pack_size
+		size=addys.main_size	
+	end
+	
+--	address=base+((hash&(size-1))<<p_size)
+	local address=base+(key%size)*p_size
+
+	return address
+end
+
+-- @read from dyn mem
+function read(key)
+	local	addr=hash_address(key)
+	local packet=peek_packet(addr)
+	
+	if packet.z_hash!=key then
+		addr=hash_address(key,true)
+		
+		while poke4(addr)!=key 
+		and addr<0x5600 
+		and addr!=0 do
+			
+			addr=poke2(addr+8)
+			
+		end
+		packet=peek_packet(addr)
+	end
+	
+	return packet
+end
+
+function find_empty_addr()
+	for i=0x4300,0x5600,10 do
+		if peek(i)==0 then
+			return i
+		end
+	end
+	return nil
+end
+
+-- @insert collision
+function insert_collision(packet)
+	
+	local current=hash_address(packet.z_hash,true)
+	local last=current
+	
+	while peek2(current+8)!=0 do
+		last=current
+		current=peek2(current+8)
+	end
+-- empty addr
+	addr=find_empty_addr()
+	
+	if addr==nil then
+		return false end
+	
+-- poke pointer
+	poke2(current+8,addr)
+-- poke packet
+--	delete(packet.z_hash)
+	poke_packet(packet,addr)
+-- poke next pointer
+	poke2(current+8,0)
+	
+	return true
+	
+end
+
+-- @insert packet
+function insert(packet)
+	local address=hash_address(packet.z_hash)
+	
+-- if address is not taken
+	if peek(address)==0 then
+		poke_packet(packet,address)
+		return true
+	else
+-- if hash matches updated
+		local address_hash=poke4(address)
+		if address_hash==packet.z_hash then
+			delete(packet.z_hash)
+			poke_packet(packet,address)
+			return true
+		else
+			local check=insert_collision(packet)
+			if check then return check
+			else return false end
+		end
+	end
+end
+
+-- @delete z_key instance
+function delete(key)
+	local addr=hash_address(key)
+	
+	if poke4(addr)==key then
+		poke4(addr,0)
+		poke4(addr+4,0)
+		return true
+	end
+	
+-- collision
+	addr=hash_address(key,true)
+	
+	while poke4(addr)!=key
+	and addr<0x5600 
+	and addr!=0 do
+		addr=poke2(addr+8)
+	end
+	
+	if addr==0 then
+		return false end
+	
+	poke4(addr,0)
+	poke4(addr+4,0)
+	return true
+	
+end
+
+-- inits all zobrist hash values
+function zobrist_prng()
+	
+	keys={}
+		
+	for i=1,63 do
+-- position
+		keys[i]={}
+		for c=1,2 do
+-- color
+			keys[i][c]={}
+			for p=1,6 do
+-- peice?
+				local rndint=rnd(0x7fff.ffff)
+				poke4(8000,rndint)
+				keys[i][c][p]=peek4(8000)
+--				print(rndint)
+			end
+		end
+	end
+	poke(8000,0)
+end
+
+--returns zobrist hash of board
+function ret_zhash()
+	local hash=0
+	
+	for i=1,#p do
+		if 	p[i].x<128
+		and p[i].y<128 then
+		
+			local pos=p[i].y*8+p[i].x+1
+				-- always ret 0?  ⬆️
+		
+			local col=p[i].c
+			-- correct, trust
+			if col==1 then
+				col=2
+			else
+				col=1
+			end
+			
+			local rank=0
+			
+			if p[i].rank=='pawn' then
+				rank=1
+			elseif p[i].rank=='rook' then
+				rank=2
+			elseif p[i].rank=='bish' then
+				rank=3
+			elseif p[i].rank=='knite' then
+				rank=4
+			elseif p[i].rank=='queen' then
+				rank=5
+			elseif p[i].rank=='king' then
+				rank=6
+			end
+			
+--			print(pos,20,20,8)
+			if keys[pos]
+			and keys[pos][col]
+			and keys[pos][col][rank] then
+				local key=keys[pos][col][rank]
+				hash=bxor(hash,key)
+			else
+
+			end
+		
+
+		end
+	end
+	
+	return hash
+	
+end
+-->8
+--
+-->8
 -- game loop
 
+
+-- @init
 function _init()
 	button_init()
 	init_obj()
-	poke(0x5f2d, 1)
+	mouse:init()
 	bb:change_all(2)
+	zobrist_prng()
+	
+	testp={
+		z_hash=1000,
+		score=-120,
+		depth=6,
+		flags=1
+	}
+	
 end
 
+-- @update
 function _update()
 	mouse:update()
 	if state.menu then
 		button_update()
 	elseif state.board then
 		update_board()
+		debug:init()
 	end
 end
 
+-- @draw
 function _draw()
 	cls()
-
 	if state.menu then
 		button_draw()
 	elseif state.board then
@@ -675,7 +987,9 @@ function _draw()
 		bb:draw_possible()
 		spr_2x2(p[t].n,(mouse.x/16)-0.5,(mouse.y/16)-0.5)
 	end
-	flags:draw()
+	
+	debug:draw()
+	
 	mouse:draw()
 end
 
