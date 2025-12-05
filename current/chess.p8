@@ -16,12 +16,20 @@ debug={
 	stats=true,
 	
 	init=function(s)
-		if s.inits then
 		
-		poss=botPossibleMoves(-1)
+		boardt=performantBoard()
+		test1=botPossibleMoves(-1,boardt)
 
 		s.inits=false
+	end,
+
+	update=function(s)
+		if s.inits then
+			s:init()
 		end
+
+
+
 	end,
 	
 	draw=function(s)
@@ -56,7 +64,7 @@ function _update()
 		button_update()
 	elseif state.board then
 		update_board()
-		debug:init()
+		debug:update()
 	end
 end
 
@@ -77,7 +85,7 @@ function _draw()
 	end
 	
 	debug:draw()
-	
+
 	mouse:draw()
 end
 

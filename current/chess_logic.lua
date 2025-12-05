@@ -232,19 +232,12 @@ function init_obj()
 				if bx!=s.x or by!=s.y then
 					local i=bb:what_i(bx,by)
 					local i2=bb:what_i(bx,by+s.c)
--- en passunte
-					if i2!=nil then
-						if p[i2].skipped then
-							p[i2].visible=false
-							p[i2].x=200
-							p[i2].y=200
-						end
-					end
 					
 					if i!=nil then
 						p[i].visible=false
 						p[i].x=200
 						p[i].y=200
+						deli()
 					end
 					s.x=bx
 					s.y=by
