@@ -49,7 +49,7 @@ function read(key)
 		while peek4(addr)!=key 
 		and addr<0x5600
 		and addr>0x3400
-		and count<200 do
+		and count<16 do
 			count+=1
 			addr=peek2(addr+8)
 		end
@@ -88,7 +88,7 @@ function insert_collision(packet)
 	while peek2(current+8)!=0 
 	and current<0x5600
 	and current>0x4300
-	and count<200 do
+	and count<16 do
 		if peek4(current)==packet.z_hash then
 			poke_packet(packet,current)
 			return current
@@ -180,7 +180,7 @@ function delete(key)
 	while peek4(addr)!=key
 	and addr<0x5600 
 	and addr!=0
-	and count<200 do
+	and count<16 do
 		count+=1
 		addr=peek2(addr+8)
 	end

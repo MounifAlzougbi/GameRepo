@@ -1,4 +1,7 @@
 
+function evalBoard()
+
+end
 
 function posToInt(x,y)
 	if x>8 or y>8 or y<0
@@ -22,7 +25,7 @@ function peiceStep(x,y,dx,dy,i,tbl)
 	end
 end
 
--- returns possible moves for eatch peice in color, rets moves as {from,to}
+-- returns possible moves for eatch peice in color, rets moves as {from,to}		this is NOT performant must be updated with arr
 function botPossibleMoves(color)
 	local moves={}
 
