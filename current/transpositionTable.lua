@@ -1,5 +1,9 @@
 -- zobrist / mem
 
+function retPacket(hash)
+
+end
+
 addys={ -- memory addresses
 	main_start=0x8000+96, -- free
 	main_size=4084, -- slots
@@ -169,10 +173,16 @@ function delete(key)
 
 		poke2(addr+8,0)
 
+	--	bring pointed info to this spot (faster lookup)
 		poke4(addr,peek4(pointer))
 		poke4(addr+4,peek4(pointer+4))
-	--poke pointer 'pull chain up'
+	--	poke pointer 'pull chain up'
 		poke2(addr+8,peek2(pointer+8))
+
+	--	wipe out the past info so no duplicates
+		poke4(pointer,0)
+		poke4(pointer+4,0)
+		poke2(pointer+8,0)
 		return true
 	end
 
@@ -214,7 +224,7 @@ function zobrist_prng()
 				local rndint=rnd(0x7fff.ffff)
 				poke4(8000,rndint)
 				keys[i][c][p]=peek4(8000)
---				print(rndint)
+--				- indexed, position, color and peice
 			end
 		end
 	end
@@ -222,56 +232,44 @@ function zobrist_prng()
 end
 
 --returns zobrist hash of board
-function ret_zhash()
+function retZhash(board)
 	local hash=0
 	
-	for i=1,#p do
-		if 	p[i].x<128
-		and p[i].y<128 then
-		
-			local pos=p[i].y*8+p[i].x+1
-				-- always ret 0?  ⬆️
-		
-			local col=p[i].c
-			-- correct, trust
+	for i=1,64 do
+		if 	board[i]!=0 then
+			local pos=i
+			local rank=board[i].rank
+			local col=board[i].c
+	-- col to index
 			if col==1 then
 				col=2
 			else
 				col=1
 			end
-			
-			local rank=0
-			
-			if p[i].rank=='pawn' then
+	-- rank to index		
+			if rank=='pawn' then
 				rank=1
-			elseif p[i].rank=='rook' then
+			elseif rank=='rook' then
 				rank=2
-			elseif p[i].rank=='bish' then
+			elseif rank=='bish' then
 				rank=3
-			elseif p[i].rank=='knite' then
+			elseif rank=='knite' then
 				rank=4
-			elseif p[i].rank=='queen' then
+			elseif rank=='queen' then
 				rank=5
-			elseif p[i].rank=='king' then
+			elseif rank=='king' then
 				rank=6
 			end
 			
---			print(pos,20,20,8)
 			if keys[pos]
 			and keys[pos][col]
 			and keys[pos][col][rank] then
 				local key=keys[pos][col][rank]
 				hash=bxor(hash,key)
-			else
-
 			end
-		
-
 		end
 	end
-	
 	return hash
-	
 end
 
 -- @mem inits

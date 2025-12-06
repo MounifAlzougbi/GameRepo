@@ -2,11 +2,12 @@ pico-8 cartridge // http://www.pico-8.com
 version 43
 __lua__
 
-#include mouse&sys.lua
-#include chess_logic.lua
+#include mouseNdSys.lua
+#include chessLogic.lua
 #include transpositionTable.lua
 #include PST.lua
 #include chessBotTools.lua
+#include chessBot.lua
 
 -- game loop
 
@@ -17,8 +18,7 @@ debug={
 	
 	init=function(s)
 		
-		boardt=performantBoard()
-		test1=botPossibleMoves(-1,boardt)
+
 
 		s.inits=false
 	end,
@@ -28,7 +28,9 @@ debug={
 			s:init()
 		end
 
-
+		boardt=performantBoard()
+		test1=clrPossibleMoves(-1,boardt)
+		zash=retZhash(boardt)
 
 	end,
 	
@@ -41,8 +43,9 @@ debug={
 		-- print(tostr(t1,true),0,15,2)
 		-- print(tostr(t2,true),0,21,2)
 		-- print(tostr(t3,true),0,27,2)
-
-		-- print(tostr(addr,true),0,33,2)
+		if botEval!=nil then
+			-- print(zash,0,33,2)
+		end
 	end
 }
 
@@ -65,6 +68,7 @@ function _update()
 	elseif state.board then
 		update_board()
 		debug:update()
+		botUpdate()
 	end
 end
 
@@ -85,6 +89,7 @@ function _draw()
 	end
 	
 	debug:draw()
+	bot:draw()
 
 	mouse:draw()
 end
