@@ -3,11 +3,11 @@ version 43
 __lua__
 
 #include mouseNdSys.lua
-#include chessLogic.lua
 #include transpositionTable.lua
 #include PST.lua
 #include chessBotTools.lua
 #include chessBot.lua
+#include chessLogic.lua
 
 -- game loop
 
@@ -53,11 +53,10 @@ debug={
 -- @init
 function _init()
 	button_init()
-	init_obj()
 	mouse:init()
-	bb:change_all(2)
 	zobrist_prng()
 	mem_init()
+	chessInit()
 end
 
 -- @update
@@ -66,9 +65,9 @@ function _update()
 	if state.menu then
 		button_update()
 	elseif state.board then
-		update_board()
-		debug:update()
+		chessUpdate()
 		botUpdate()
+		debug:update()
 	end
 end
 
@@ -79,15 +78,13 @@ function _draw()
 		button_draw()
 	elseif state.board then
 		map()
-		draw_pieces()
-	end
-
-	if mouse.target>-1 then
-		local t=mouse.target 
-		bb:draw_possible()
-		spr_2x2(p[t].n,(mouse.x/16)-0.5,(mouse.y/16)-0.5)
+		chessDraw()
 	end
 	
+	if mouse.target!=-1 then
+		spr2x2(p[mouse.target].sprIndex,mouse.x-8,mouse.y-8)
+	end
+
 	debug:draw()
 	bot:draw()
 

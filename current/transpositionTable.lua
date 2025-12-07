@@ -1,11 +1,8 @@
 -- zobrist / mem
 
-function retPacket(hash)
-
-end
 
 addys={ -- memory addresses
-	main_start=0x8000+96, -- free
+	main_start=0x8000, -- free
 	main_size=4084, -- slots
 	main_pack_size=8, -- bytes
 --[[
@@ -41,12 +38,12 @@ function hash_address(key,col)
 	return address
 end
 
--- @read from dyn mem
+-- @read from TT 			key==zobrist hash==tt hash key
 function read(key)
 	local	addr=hash_address(key)
-	local packet=peek_packet(addr)
+	local packet=peekPacket(addr)
 	
-	if packet.z_hash!=key then
+	if packet.zHash!=key then
 		addr=hash_address(key,true)
 		local count=0
 
@@ -60,7 +57,7 @@ function read(key)
 
 		if peek4(addr)!=key then
 			return false end
-		packet=peek_packet(addr)
+		packet=peekPacket(addr)
 	end
 	
 	return packet
@@ -78,12 +75,12 @@ end
 -- @insert collision
 function insert_collision(packet)
 	
-	local current=hash_address(packet.z_hash,true)
+	local current=hash_address(packet.zHash,true)
 	local last=current
 	local count=0
 
 	if peek4(current)==0 then
-		poke_packet(packet,current)
+		pokePacket(packet,current)
 		poke2(current+8,0)
 		return current
 	end
@@ -93,8 +90,8 @@ function insert_collision(packet)
 	and current<0x5600
 	and current>0x4300
 	and count<16 do
-		if peek4(current)==packet.z_hash then
-			poke_packet(packet,current)
+		if peek4(current)==packet.zHash then
+			pokePacket(packet,current)
 			return current
 		end
 		count+=1
@@ -102,8 +99,8 @@ function insert_collision(packet)
 		current=peek2(current+8)
 	end
 
-	if peek4(current)==packet.z_hash then
-		poke_packet(packet,current)
+	if peek4(current)==packet.zHash then
+		pokePacket(packet,current)
 		return current
 	end
 
@@ -115,7 +112,7 @@ function insert_collision(packet)
 	
 -- poke packet
 
-	poke_packet(packet,addr)
+	pokePacket(packet,addr)
 
 -- make sure no self pointing
 	if current+8!=addr+8 then
@@ -128,17 +125,17 @@ end
 
 -- @insert packet
 function insert(packet)
-	local address=hash_address(packet.z_hash)
+	local address=hash_address(packet.zHash)
 	
 -- if address is not taken
 	if peek4(address)==0 then
-		poke_packet(packet,address)
+		pokePacket(packet,address)
 		return address
 	else
 -- if hash matches updated
-		if peek4(address)==packet.z_hash then
-			delete(packet.z_hash)
-			poke_packet(packet,address)
+		if peek4(address)==packet.zHash then
+			delete(packet.zHash)
+			pokePacket(packet,address)
 			return 'main mem update'
 		else
 			local check=insert_collision(packet)
@@ -213,7 +210,7 @@ function zobrist_prng()
 	
 	keys={}
 		
-	for i=1,63 do
+	for i=1,64 do
 -- position
 		keys[i]={}
 		for c=1,2 do
@@ -224,11 +221,11 @@ function zobrist_prng()
 				local rndint=rnd(0x7fff.ffff)
 				poke4(8000,rndint)
 				keys[i][c][p]=peek4(8000)
+				poke(8000,0)
 --				- indexed, position, color and peice
 			end
 		end
 	end
-	poke(8000,0)
 end
 
 --returns zobrist hash of board

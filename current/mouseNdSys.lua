@@ -1,4 +1,13 @@
 
+function makePacket(zHash,moveFrom,moveTo,heuristic,capture,score,depth,boundType,age)
+	local packet={
+		zHash=Zhash,
+		move1=bor(moveFrom<<2,heuristic),
+		move2=bor(moveTo<<2,capture),
+		score=score,
+		flags=bor(bor(depth<<2,boundType)<<2,age)
+	}
+end
 
 -- t/f if i in range
 function range(mn,mx,i)
@@ -9,13 +18,13 @@ function range(mn,mx,i)
 end
 
 -- rets peeked packet
-function peek_packet(address)
+function peekPacket(address)
 --	if address==nil then
 
 	return {
-		z_hash=peek4(address),
-		score=peek2(address+4),
-		depth=peek(address+6),
+		zHash=peek4(address),
+		moves=peek2(address+4),
+		score=peek(address+6),
 		flags=peek(address+7)
 	}
 end
@@ -25,24 +34,11 @@ end
 	1-4 z hash, 5-6 best move (6bit per pos) with 2bit heuristic and 2bit capture
 	7 signed int score, 8 flags 4bit depth 2bit age 2bit scorebound >,<,=
 --]]
-function poke_packet(packet,address)
-	if range(0x8000,0xffff,address)
-	or range(0x4300,0x5600,address) then
-
-		if address<0x5600 then
-			poke4(address)
-			poke4(address+4)
-			-- poke2(address+8)
-		elseif address>0x8000 then
-			poke4(address)
-			poke4(address+4)
-		end
-
-		poke4(address,packet.z_hash)
-		poke2(address+4,packet.score)
-		poke(address+6,packet.depth)
-		poke(address+7,packet.flags)
-	end
+function pokePacket(packet,address)
+	poke4(address,packet.zHash)
+	poke2(address+4,packet.moves)
+	poke(address+6,packet.score)
+	poke(address+7,packet.flags)
 end
 
 -- set to 1
@@ -65,8 +61,9 @@ end
 
 --@mouse
 mouse={
+	pos=0,
 	x=64,y=98,
-	just_pressed=false,
+	justPressed=false,
 	lock=false,
 	pressed=false,
 	target=-1,
@@ -89,7 +86,8 @@ mouse={
 	end,
 	
 	update=function(self)
-		self.just_pressed=false
+		self.pos=flr(self.y/16)*8+flr(self.x/16)
+		self.justPressed=false
 		self.x=stat(32)
 		self.y=stat(33)
 		if (stat(34)==1) then
@@ -98,7 +96,7 @@ mouse={
 			elseif (stat(34)==0) 
 			and self.pressed==true then
 				self.pressed=false
-				self.just_pressed=true
+				self.justPressed=true
 				self.lx=self.x
 				self.ly=self.y
 				self.p=46
@@ -107,6 +105,7 @@ mouse={
 	
 	draw=function(s)
 		spr(s.p,mouse.x,mouse.y)
+		print(s.target,60,60)
 	end
 }
 
@@ -124,8 +123,6 @@ function button_pressed(arg)
 	if arg=='start_multi' then
 		state.menu=false
 		state.board=true
-		init_board(-1)--init black 
-		init_board(1)--and white!
 	end
 end
 
@@ -173,7 +170,7 @@ function button_init()
 			else
 				s.c2=s.c3
 			end
-			if mouse.just_pressed
+			if mouse.justPressed
 			and mouse_coll then
 				button_pressed(s.arg)
 			end

@@ -33,7 +33,7 @@ end
 function botUpdate()
 	local turn=game.turn
 	if turn!=bot.lastTurn then
-		botBoard=performantBoard()
+		botBoard=performantBoard() 
 		botEval=evalBoard(botBoard)
 	end
 
@@ -46,7 +46,7 @@ function botUpdate()
 
 			bot.turnCount=0
 			bot.think=false
-			swap_turn()
+			swapTurn()
 
 		end
 	end

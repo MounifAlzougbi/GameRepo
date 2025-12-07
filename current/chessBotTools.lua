@@ -16,7 +16,8 @@ function evalBoard(board,gameState)
 
 	if gameState=='earlyGame' then
 		for i=1,64 do
-			if board[i]==0 then
+			if board[i]==0 
+			or board[i].c==nil then
 				goto skipIteration
 			end
 			local pos=i
@@ -55,7 +56,7 @@ function performantBoard()
 	end
 
 	for i=1,#p do
-		local bi=posToInt(p[i].x,p[i].y)
+		local bi=p[i].pos or p[i].x+p[i].y*8
 		board[bi+1]={rank=p[i].rank,c=p[i].c}
 	end
 
@@ -105,7 +106,7 @@ function peiceStep(x,y,dx,dy,i,tbl,board,color)
 	end
 end
 
--- returns possible moves for eatch peice in color, rets moves as {from,to}	
+-- returns possible moves for eatch peice in color, rets moves as {from,to}	pos 0-63
 function clrPossibleMoves(color,board)
 	local moves={{},{},{}}
 	-- moves[1]={}	-- check tbl, any move that produces check
