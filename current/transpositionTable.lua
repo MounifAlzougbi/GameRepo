@@ -17,7 +17,7 @@ seperate to maximize var space
 
 -- rets hash-mem-address
 -- currently rets 
-function hash_address(key,col)
+function hashAddress(key,col)
 	if col==nil then col=false end
 	
 	local base,p_size,size
@@ -40,11 +40,11 @@ end
 
 -- @read from TT 			key==zobrist hash==tt hash key
 function read(key)
-	local	addr=hash_address(key)
+	local	addr=hashAddress(key)
 	local packet=peekPacket(addr)
 	
 	if packet.zHash!=key then
-		addr=hash_address(key,true)
+		addr=hashAddress(key,true)
 		local count=0
 
 		while peek4(addr)!=key 
@@ -75,7 +75,7 @@ end
 -- @insert collision
 function insert_collision(packet)
 	
-	local current=hash_address(packet.zHash,true)
+	local current=hashAddress(packet.zHash,true)
 	local last=current
 	local count=0
 
@@ -125,7 +125,7 @@ end
 
 -- @insert packet
 function insert(packet)
-	local address=hash_address(packet.zHash)
+	local address=hashAddress(packet.zHash)
 	
 -- if address is not taken
 	if peek4(address)==0 then
@@ -148,7 +148,7 @@ end
 
 -- @delete z_key instance
 function delete(key)
-	local addr=hash_address(key)
+	local addr=hashAddress(key)
 	
 	if peek4(addr)==key then
 		poke4(addr,0)
@@ -157,7 +157,7 @@ function delete(key)
 	end
 	
 -- collision
-	addr=hash_address(key,true)
+	addr=hashAddress(key,true)
 
 	if peek4(addr)==key then
 		poke4(addr,0)

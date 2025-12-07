@@ -239,6 +239,7 @@ function possibleMoves(board,color)
 --  if enemy most important move is myMoves king then check=true
 	if enemyMoves[1][2]==myMoves[#myMoves] then
 		check=true
+		return myMoves
 	else
 		return myMoves
 	end
