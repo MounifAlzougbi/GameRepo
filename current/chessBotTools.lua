@@ -68,7 +68,7 @@ end
 -- 	return (peiceWeights[victim]*10)-peiceWeights[attacker]
 -- end
 
--- 'steps' possible peice moves by delta x,y - sets tbl of {from,to} 
+-- 'steps' possible peice moves by delta x,y - sets tbl of {from,to,captured rank} 
 -- returns true if end of move loop takes enemy peice
 function peiceStep(x,y,dx,dy,i,tbl,board,color)
 	local x1=x
@@ -91,10 +91,10 @@ function peiceStep(x,y,dx,dy,i,tbl,board,color)
 		elseif val!=0
 		and val.c!=color
 		and val.rank=='king' then
-			tbl[1][#tbl[1]+1]={posToInt(x,y),posToInt(sx,sy)}
+			tbl[1][#tbl[1]+1]={posToInt(x,y),posToInt(sx,sy),'king'}
 		elseif val!=0
 		and val.c!=color then
-			tbl[2][#tbl[2]+1]={posToInt(x,y),posToInt(sx,sy)}
+			tbl[2][#tbl[2]+1]={posToInt(x,y),posToInt(sx,sy),val.rank}
 			return true
 		elseif val==0 then
 			tbl[3][#tbl[3]+1]={posToInt(x,y),posToInt(sx,sy)}
@@ -157,15 +157,15 @@ function clrPossibleMoves(color,board)
 			if board[d1]!=0
 			and board[d1].c!=color 
 			and x<7 then
-				if board[d1].rank=='king' then l=3 else l=2 end
-				moves[l][#moves[l]+1]={pos,d1-1}
+				if board[d1].rank=='king' then l=1 else l=2 end
+				moves[l][#moves[l]+1]={pos,d1-1,board[d1].rank}
 			end
 
 			if board[d2]!=0
 			and board[d2].c!=color 
 			and x>0 then
-				if board[d2].rank=='king' then l=3 else l=2 end
-				moves[l][#moves[l]+1]={pos,d2-1}
+				if board[d2].rank=='king' then l=1 else l=2 end
+				moves[l][#moves[l]+1]={pos,d2-1,board[d2].rank}
 			end
 
 		elseif rank=='knite' then

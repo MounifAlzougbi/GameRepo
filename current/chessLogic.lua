@@ -135,9 +135,21 @@ function chessInit()
 
 end
 
+function deletePeicePos(pos)
+	for i=1,#p do
+		if p[i].x+p[i].y*8==pos then
+			deli(p,i)
+			return true
+		end
+	end
+end
+
 function chessUpdate()
 	local pos,moves
 	for i=1,#p do
+
+		if p[i]==nil then goto skipLoop end
+
 		pos=p[i].x+p[i].y*8
 		p[i].pos=pos
 
@@ -150,7 +162,9 @@ function chessUpdate()
 			for t=1,#moves-1 do
 				if moves[t]
 				and moves[t][1]==pos
-				and moves[t][2]==mouse.pos then
+				and moves[t][2]==mouse.pos 
+				and game.turn==p[i].c then
+					deletePeicePos(moves[t][2])
 					p[i].x,p[i].y=intToPos(moves[t][2]+1)
 					swapTurn()
 				end
@@ -165,6 +179,7 @@ function chessUpdate()
 			p[i].visible=false
 		end
 	end
+	::skipLoop::
 end
 
 function spr2x2(i,x,y)

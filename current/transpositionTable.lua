@@ -231,6 +231,7 @@ end
 --returns zobrist hash of board
 function retZhash(board)
 	local hash=0
+	local key
 	
 	for i=1,64 do
 		if 	board[i]!=0 then
@@ -258,12 +259,12 @@ function retZhash(board)
 				rank=6
 			end
 			
-			if keys[pos]
-			and keys[pos][col]
-			and keys[pos][col][rank] then
-				local key=keys[pos][col][rank]
-				hash=bxor(hash,key)
-			end
+			-- if keys[pos]
+			-- and keys[pos][col]
+			-- and keys[pos][col][rank] then
+			key=keys[pos][col][rank]
+			hash=bxor(hash,key)
+			-- end
 		end
 	end
 	return hash
